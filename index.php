@@ -72,6 +72,7 @@ $recent_loans = $pdo->query("
                 <a href="create_loan.php">Nuevo Préstamo</a>
                 <a href="users.php">Usuarios</a>
                 <a href="settings.php">Configuración</a>
+                <a href="backup.php">Backup</a>
                 <a href="logout.php" style="color: #dc2626;">Cerrar Sesión</a>
             </nav>
         </header>
