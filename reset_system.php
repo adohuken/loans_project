@@ -1,80 +1,67 @@
-<?php
-require 'auth.php';
-require 'db.php';
-
-// Only allow admin (user id 1) to reset
-if ($_SESSION['user_id'] != 1) {
-    die("Solo el administrador puede reiniciar el sistema.");
+$pdo->rollBack();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm']) && $_POST['confirm'] === 'REINICIAR') {
-    try {
-        // Ensure we're not in a transaction
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        
-        // Disable foreign key checks temporarily
-        $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
-        
-        // Start transaction
-        $pdo->beginTransaction();
-        
-        // Delete all payments
-        $pdo->exec("DELETE FROM payments");
-        
-        // Delete all loans
-        $pdo->exec("DELETE FROM loans");
-        
-        // Delete all clients
-        $pdo->exec("DELETE FROM clients");
-        
-        // Reset settings to defaults (keep only structure)
-        $pdo->exec("UPDATE settings SET 
-            company_name = 'Mi Empresa',
-            currency_symbol = '$',
-            logo_path = '',
-            company_address = '',
-            company_phone = '',
-            receipt_footer = ''
-            WHERE id = 1
-        ");
-        
-        // Keep only admin user (id = 1), delete others
-        $pdo->exec("DELETE FROM users WHERE id != 1");
-        
-        // Reset admin password to 'admin'
-        $hash = password_hash('admin', PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = 1");
-        $stmt->execute([$hash]);
-        
-        // Reset auto-increment counters
-        $pdo->exec("ALTER TABLE clients AUTO_INCREMENT = 1");
-        $pdo->exec("ALTER TABLE loans AUTO_INCREMENT = 1");
-        $pdo->exec("ALTER TABLE payments AUTO_INCREMENT = 1");
-        $pdo->exec("ALTER TABLE users AUTO_INCREMENT = 2");
-        
-        // Commit transaction
-        $pdo->commit();
-        
-        // Re-enable foreign key checks
-        $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
-        
-        $success = true;
-        
-    } catch (Exception $e) {
-        // Rollback if in transaction
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        // Re-enable foreign key checks
-        try {
-            $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
-        } catch (Exception $e2) {
-            // Ignore
-        }
-        $error = $e->getMessage();
-    }
+// Disable foreign key checks temporarily
+$pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
+
+// Start transaction
+$pdo->beginTransaction();
+
+// Delete all payments
+$pdo->exec("DELETE FROM payments");
+
+// Delete all loans
+$pdo->exec("DELETE FROM loans");
+
+// Delete all clients
+$pdo->exec("DELETE FROM clients");
+
+// Reset settings to defaults (keep only structure)
+$pdo->exec("UPDATE settings SET
+company_name = 'Mi Empresa',
+currency_symbol = '$',
+logo_path = '',
+company_address = '',
+company_phone = '',
+receipt_footer = ''
+WHERE id = 1
+");
+
+// Keep only admin user (id = 1), delete others
+$pdo->exec("DELETE FROM users WHERE id != 1");
+
+// Reset admin password to 'admin'
+$hash = password_hash('admin', PASSWORD_DEFAULT);
+$stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = 1");
+$stmt->execute([$hash]);
+
+// Reset auto-increment counters
+$pdo->exec("ALTER TABLE clients AUTO_INCREMENT = 1");
+$pdo->exec("ALTER TABLE loans AUTO_INCREMENT = 1");
+$pdo->exec("ALTER TABLE payments AUTO_INCREMENT = 1");
+$pdo->exec("ALTER TABLE users AUTO_INCREMENT = 2");
+
+// Commit transaction
+$pdo->commit();
+
+// Re-enable foreign key checks
+$pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+
+$success = true;
+
+} catch (Exception $e) {
+// Rollback if in transaction
+if ($pdo->inTransaction()) {
+$pdo->rollBack();
+}
+// Re-enable foreign key checks
+try {
+$pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+} catch (Exception $e2) {
+// Ignore
+}
+$error = $e->getMessage();
+}
 }
 ?>
 <!DOCTYPE html>
@@ -105,25 +92,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm']) && $_POST[
 
         <div class="card" style="max-width: 700px; margin: 0 auto;">
             <h2 style="color: #dc2626;">⚠️ Reiniciar Sistema</h2>
-            
+
             <?php if (isset($success)): ?>
-                <div style="background: #dcfce7; border: 1px solid #86efac; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                <div
+                    style="background: #dcfce7; border: 1px solid #86efac; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                     <h3 style="color: #166534; margin: 0 0 0.5rem 0;">✅ Sistema Reiniciado Exitosamente</h3>
-                    <p style="margin: 0; color: #166534;">Todos los datos han sido eliminados. El sistema está listo para una nueva empresa.</p>
-                    <p style="margin: 0.5rem 0 0 0; color: #166534;"><strong>Usuario:</strong> admin | <strong>Contraseña:</strong> admin</p>
+                    <p style="margin: 0; color: #166534;">Todos los datos han sido eliminados. El sistema está listo para
+                        una nueva empresa.</p>
+                    <p style="margin: 0.5rem 0 0 0; color: #166534;"><strong>Usuario:</strong> admin |
+                        <strong>Contraseña:</strong> admin</p>
                 </div>
                 <a href="settings.php" class="btn">Volver a Configuración</a>
                 <a href="logout.php" class="btn btn-secondary" style="margin-left: 10px;">Cerrar Sesión</a>
             <?php elseif (isset($error)): ?>
-                <div style="background: #fee2e2; border: 1px solid #fecaca; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                <div
+                    style="background: #fee2e2; border: 1px solid #fecaca; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                     <h3 style="color: #dc2626; margin: 0 0 0.5rem 0;">❌ Error</h3>
                     <p style="margin: 0; color: #dc2626;"><?= htmlspecialchars($error) ?></p>
                 </div>
                 <a href="settings.php" class="btn">Volver a Configuración</a>
             <?php else: ?>
-                <div style="background: #fef9c3; border: 1px solid #fde68a; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <div
+                    style="background: #fef9c3; border: 1px solid #fde68a; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
                     <h3 style="color: #854d0e; margin: 0 0 0.5rem 0;">⚠️ ADVERTENCIA</h3>
-                    <p style="margin: 0; color: #854d0e;">Esta acción es <strong>IRREVERSIBLE</strong> y eliminará permanentemente:</p>
+                    <p style="margin: 0; color: #854d0e;">Esta acción es <strong>IRREVERSIBLE</strong> y eliminará
+                        permanentemente:</p>
                 </div>
 
                 <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
@@ -135,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm']) && $_POST[
                         <li>✗ Todos los <strong>Usuarios</strong> (excepto admin)</li>
                         <li>✗ Toda la <strong>Configuración</strong> de la empresa (logo, nombre, etc.)</li>
                     </ul>
-                    
+
                     <h3 style="margin-top: 1.5rem;">Se Mantendrá:</h3>
                     <ul style="margin: 0; padding-left: 1.5rem; color: #10b981;">
                         <li>✓ Usuario <strong>admin</strong> (contraseña: admin)</li>
@@ -143,19 +136,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm']) && $_POST[
                     </ul>
                 </div>
 
-                <form method="POST" onsubmit="return confirm('¿ESTÁS COMPLETAMENTE SEGURO? Esta acción NO se puede deshacer.');">
+                <form method="POST"
+                    onsubmit="return confirm('¿ESTÁS COMPLETAMENTE SEGURO? Esta acción NO se puede deshacer.');">
                     <div class="form-group">
                         <label style="color: #dc2626; font-weight: bold;">Para confirmar, escribe: REINICIAR</label>
-                        <input type="text" name="confirm" required placeholder="Escribe REINICIAR en mayúsculas" 
-                               style="border: 2px solid #dc2626;">
+                        <input type="text" name="confirm" required placeholder="Escribe REINICIAR en mayúsculas"
+                            style="border: 2px solid #dc2626;">
                     </div>
-                    
-                    <button type="submit" class="btn" 
-                            style="background: #dc2626; width: 100%;">
+
+                    <button type="submit" class="btn" style="background: #dc2626; width: 100%;">
                         🗑️ REINICIAR SISTEMA COMPLETO
                     </button>
                 </form>
-                
+
                 <a href="settings.php" class="btn btn-secondary" style="width: 100%; margin-top: 1rem; text-align: center;">
                     Cancelar y Volver
                 </a>

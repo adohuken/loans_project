@@ -40,6 +40,7 @@ $total_users = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
                 <a href="clients.php">Clientes</a>
                 <a href="active_loans.php">Abonar</a>
                 <a href="create_loan.php">Nuevo Préstamo</a>
+                <a href="reports.php">Reportes</a>
                 <a href="users.php">Usuarios</a>
                 <a href="settings.php">Configuración</a>
                 <a href="backup.php" class="active">Backup</a>

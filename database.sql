@@ -49,13 +49,16 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Insertar configuración por defecto si no existe
 INSERT IGNORE INTO settings (id, company_name, currency_symbol) VALUES (1, 'Mi Empresa', '$');
 
--- Tabla de Usuarios
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'superadmin') DEFAULT 'admin',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Usuario por defecto (password: admin123)
-INSERT IGNORE INTO users (id, username, password) VALUES (1, 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');
+INSERT IGNORE INTO users (id, username, password, role) VALUES (1, 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
+
+-- SuperAdmin (password: SuperAdmin123)
+INSERT IGNORE INTO users (username, password, role) VALUES ('SuperAdmin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'superadmin');

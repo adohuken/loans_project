@@ -40,6 +40,7 @@ $users = $stmt->fetchAll();
                 <a href="clients.php">Clientes</a>
                 <a href="active_loans.php">Abonar</a>
                 <a href="create_loan.php">Nuevo Préstamo</a>
+                <a href="reports.php">Reportes</a>
                 <a href="users.php" class="active">Usuarios</a>
                 <a href="settings.php">Configuración</a>
                 <a href="backup.php">Backup</a>
@@ -53,33 +54,36 @@ $users = $stmt->fetchAll();
                 <a href="create_user.php" class="btn">Nuevo Usuario</a>
             </div>
 
-            <table style="margin-top: 1rem;">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Usuario</th>
-                        <th>Fecha Creación</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($users as $user): ?>
+            <div class="table-responsive">
+                <table style="margin-top: 1rem;">
+                    <thead>
                         <tr>
-                            <td>#<?= $user['id'] ?></td>
-                            <td><?= htmlspecialchars($user['username']) ?></td>
-                            <td><?= $user['created_at'] ?></td>
-                            <td>
-                                <a href="edit_user.php?id=<?= $user['id'] ?>" class="btn btn-sm btn-secondary">Editar</a>
-                                <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                    <a href="users.php?delete=<?= $user['id'] ?>" class="btn btn-sm btn-secondary"
-                                        style="background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca;"
-                                        onclick="return confirm('¿Estás seguro de eliminar este usuario?')">Eliminar</a>
-                                <?php endif; ?>
-                            </td>
+                            <th>ID</th>
+                            <th>Usuario</th>
+                            <th>Fecha Creación</th>
+                            <th>Acciones</th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($users as $user): ?>
+                            <tr>
+                                <td>#<?= $user['id'] ?></td>
+                                <td><?= htmlspecialchars($user['username']) ?></td>
+                                <td><?= $user['created_at'] ?></td>
+                                <td>
+                                    <a href="edit_user.php?id=<?= $user['id'] ?>"
+                                        class="btn btn-sm btn-secondary">Editar</a>
+                                    <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                                        <a href="users.php?delete=<?= $user['id'] ?>" class="btn btn-sm btn-secondary"
+                                            style="background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca;"
+                                            onclick="return confirm('¿Estás seguro de eliminar este usuario?')">Eliminar</a>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </body>

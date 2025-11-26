@@ -28,7 +28,9 @@ if (!$user) {
             <nav>
                 <a href="index.php">Inicio</a>
                 <a href="clients.php">Clientes</a>
+                <a href="active_loans.php">Abonar</a>
                 <a href="create_loan.php">Nuevo Préstamo</a>
+                <a href="reports.php">Reportes</a>
                 <a href="users.php" class="active">Usuarios</a>
                 <a href="settings.php">Configuración</a>
                 <a href="backup.php">Backup</a>
@@ -36,27 +38,28 @@ if (!$user) {
             </nav>
         </header>
 
-        <div class="card" style="max-width: 500px; margin: 0 auto;">
-            <h2>Editar Usuario</h2>
-            <form action="update_user.php" method="POST" style="margin-top: 1rem;">
-                <input type="hidden" name="id" value="<?= $user['id'] ?>">
 
-                <div class="form-group">
-                    <label>Nombre de Usuario</label>
-                    <input type="text" name="username" value="<?= htmlspecialchars($user['username']) ?>" required>
-                </div>
+<div class="card" style="max-width: 500px; margin: 0 auto;">
+    <h2>Editar Usuario</h2>
+    <form action="update_user.php" method="POST" style="margin-top: 1rem;">
+        <input type="hidden" name="id" value="<?= $user['id'] ?>">
 
-                <div class="form-group">
-                    <label>Nueva Contraseña</label>
-                    <input type="password" name="password" placeholder="Dejar en blanco para mantener la actual">
-                </div>
-
-                <button type="submit" class="btn" style="width: 100%;">Actualizar Usuario</button>
-                <a href="users.php" class="btn btn-secondary"
-                    style="display: block; text-align: center; margin-top: 10px;">Cancelar</a>
-            </form>
+        <div class="form-group">
+            <label>Nombre de Usuario</label>
+            <input type="text" name="username" value="<?= htmlspecialchars($user['username']) ?>" required>
         </div>
-    </div>
+
+        <div class="form-group">
+            <label>Nueva Contraseña</label>
+            <input type="password" name="password" placeholder="Dejar en blanco para mantener la actual">
+        </div>
+
+        <button type="submit" class="btn" style="width: 100%;">Actualizar Usuario</button>
+        <a href="users.php" class="btn btn-secondary"
+            style="display: block; text-align: center; margin-top: 10px;">Cancelar</a>
+    </form>
+</div>
+</div>
 </body>
 
 </html>

@@ -36,6 +36,7 @@ if (!$settings) {
                 <a href="clients.php">Clientes</a>
                 <a href="active_loans.php">Abonar</a>
                 <a href="create_loan.php">Nuevo Préstamo</a>
+                <a href="reports.php">Reportes</a>
                 <a href="users.php">Usuarios</a>
                 <a href="settings.php" class="active">Configuración</a>
                 <a href="logout.php" style="color: #dc2626;">Cerrar Sesión</a>
@@ -92,27 +93,26 @@ if (!$settings) {
 
                 <button type="submit" class="btn" style="width: 100%;">Guardar Cambios</button>
             </form>
-            
+
             <!-- Import Existing Loans Section -->
             <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #e2e8f0;">
                 <h3 style="color: #3b82f6;">📥 Importar Préstamos Existentes</h3>
                 <p style="color: #64748b; margin-bottom: 1rem;">
                     Si tu empresa ya tiene préstamos activos, impórtalos al sistema para darles seguimiento.
                 </p>
-                <a href="import_loan.php" class="btn" 
-                   style="background: #3b82f6; width: 100%; text-align: center;">
+                <a href="import_loan.php" class="btn" style="background: #3b82f6; width: 100%; text-align: center;">
                     📥 Importar Préstamo Existente
                 </a>
             </div>
-            
+
             <!-- Reset System Section -->
             <?php if ($_SESSION['user_id'] == 1): ?>
                 <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #e2e8f0;">
                     <h3 style="color: #dc2626;">⚠️ Zona Peligrosa</h3>
-                    <p style="color: #64748b; margin-bottom: 1rem;">Reinicia el sistema para un nuevo cliente. Esta acción eliminará TODOS los datos.</p>
-                    <a href="reset_system.php" class="btn" 
-                       style="background: #dc2626; width: 100%; text-align: center;"
-                       onclick="return confirm('¿Estás seguro? Esto te llevará a la página de reinicio del sistema.')">
+                    <p style="color: #64748b; margin-bottom: 1rem;">Reinicia el sistema para un nuevo cliente. Esta acción
+                        eliminará TODOS los datos.</p>
+                    <a href="reset_system.php" class="btn" style="background: #dc2626; width: 100%; text-align: center;"
+                        onclick="return confirm('¿Estás seguro? Esto te llevará a la página de reinicio del sistema.')">
                         🗑️ Reiniciar Sistema Completo
                     </a>
                 </div>

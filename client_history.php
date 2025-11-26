@@ -47,6 +47,7 @@ foreach ($loans as $l) {
                 <a href="clients.php" class="active">Clientes</a>
                 <a href="active_loans.php">Abonar</a>
                 <a href="create_loan.php">Nuevo Préstamo</a>
+                <a href="reports.php">Reportes</a>
                 <a href="users.php">Usuarios</a>
                 <a href="settings.php">Configuración</a>
                 <a href="backup.php">Backup</a>
@@ -68,49 +69,6 @@ foreach ($loans as $l) {
                     <p style="font-size: 1.5rem; font-weight: bold; color: #166534;"><?= $paid_loans ?></p>
                 </div>
                 <div class="card" style="background: #fffbeb; border: 1px solid #fde68a; box-shadow: none;">
-                    <h3>Activos</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #92400e;"><?= $active_loans ?></p>
-                </div>
-            </div>
-
-            <h3>Detalle de Préstamos</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Fecha Inicio</th>
-                        <th>Monto</th>
-                        <th>Total a Pagar</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($loans as $loan): ?>
-                        <tr>
-                            <td>#<?= $loan['id'] ?></td>
-                            <td><?= $loan['start_date'] ?></td>
-                            <td>$<?= number_format($loan['amount'], 2) ?></td>
-                            <td>$<?= number_format($loan['total_amount'], 2) ?></td>
-                            <td>
-                                <span class="badge badge-<?= $loan['status'] == 'active' ? 'pending' : 'paid' ?>">
-                                    <?= strtoupper($loan['status']) ?>
-                                </span>
-                            </td>
-                            <td>
-                                <a href="loan_details.php?id=<?= $loan['id'] ?>" class="btn btn-sm btn-secondary">Ver
-                                    Detalles</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-
-            <div style="margin-top: 1rem;">
-                <a href="clients.php" class="btn btn-secondary">Volver a Clientes</a>
-            </div>
-        </div>
-    </div>
 </body>
 
 </html>
