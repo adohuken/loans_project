@@ -6,10 +6,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
     $phone = $_POST['phone'];
     $address = $_POST['address'];
+    $portfolio_id = !empty($_POST['portfolio_id']) ? $_POST['portfolio_id'] : null;
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO clients (cedula, name, phone, address) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$cedula, $name, $phone, $address]);
+        $stmt = $pdo->prepare("INSERT INTO clients (cedula, name, phone, address, portfolio_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$cedula, $name, $phone, $address, $portfolio_id]);
         header("Location: clients.php");
     } catch (PDOException $e) {
         if ($e->getCode() == 23000) {

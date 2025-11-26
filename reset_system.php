@@ -71,7 +71,7 @@ $error = $e->getMessage();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reiniciar Sistema - Sistema de Préstamos</title>
-    <link rel="stylesheet" href="style.css?v=2.0">
+    <link rel="stylesheet" href="style.css?v=3.0">
 </head>
 
 <body>
@@ -83,7 +83,9 @@ $error = $e->getMessage();
                 <a href="clients.php">Clientes</a>
                 <a href="active_loans.php">Abonar</a>
                 <a href="create_loan.php">Nuevo Préstamo</a>
-                <a href="users.php">Usuarios</a>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+                    <a href="users.php">Usuarios</a>
+                <?php endif; ?>
                 <a href="settings.php">Configuración</a>
                 <a href="backup.php">Backup</a>
                 <a href="logout.php" style="color: #dc2626;">Cerrar Sesión</a>
@@ -100,7 +102,8 @@ $error = $e->getMessage();
                     <p style="margin: 0; color: #166534;">Todos los datos han sido eliminados. El sistema está listo para
                         una nueva empresa.</p>
                     <p style="margin: 0.5rem 0 0 0; color: #166534;"><strong>Usuario:</strong> admin |
-                        <strong>Contraseña:</strong> admin</p>
+                        <strong>Contraseña:</strong> admin
+                    </p>
                 </div>
                 <a href="settings.php" class="btn">Volver a Configuración</a>
                 <a href="logout.php" class="btn btn-secondary" style="margin-left: 10px;">Cerrar Sesión</a>

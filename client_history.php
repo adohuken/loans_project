@@ -35,7 +35,7 @@ foreach ($loans as $l) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historial Crediticio - <?= htmlspecialchars($client['name']) ?></title>
-    <link rel="stylesheet" href="style.css?v=2.0">
+    <link rel="stylesheet" href="style.css?v=3.0">
 </head>
 
 <body>
@@ -48,7 +48,10 @@ foreach ($loans as $l) {
                 <a href="active_loans.php">Abonar</a>
                 <a href="create_loan.php">Nuevo Préstamo</a>
                 <a href="reports.php">Reportes</a>
-                <a href="users.php">Usuarios</a>
+                <a href="portfolios.php">Carteras</a>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+                    <a href="users.php">Usuarios</a>
+                <?php endif; ?>
                 <a href="settings.php">Configuración</a>
                 <a href="backup.php">Backup</a>
                 <a href="logout.php" style="color: #dc2626;">Cerrar Sesión</a>

@@ -2,20 +2,41 @@
 require 'auth.php';
 require 'db.php';
 
-// Fetch current settings
+// Check if user is cobrador and redirect to active_loans
+if (isset($_SESSION['role']) && $_SESSION['role'] === 'cobrador') {
+    header("Location: active_loans.php");
+    exit;
+}
+
+$message = '';
+
+// Handle Form Submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $company_name = $_POST['company_name'];
+    $currency_symbol = $_POST['currency_symbol'];
+    $interest_rate = $_POST['interest_rate'];
+
+    // Handle Logo Upload
+    $logo_path = $_POST['current_logo'];
+    if (isset($_FILES['logo']) && $_FILES['logo']['error'] == 0) {
+        $target_dir = "uploads/";
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+        $target_file = $target_dir . basename($_FILES["logo"]["name"]);
+        if (move_uploaded_file($_FILES["logo"]["tmp_name"], $target_file)) {
+            $logo_path = $target_file;
+        }
+    }
+
+    $stmt = $pdo->prepare("UPDATE settings SET company_name = ?, currency_symbol = ?, interest_rate = ?, logo_path = ? WHERE id = 1");
+    $stmt->execute([$company_name, $currency_symbol, $interest_rate, $logo_path]);
+    $message = "Configuración actualizada correctamente.";
+}
+
+// Fetch Current Settings
 $stmt = $pdo->query("SELECT * FROM settings WHERE id = 1");
 $settings = $stmt->fetch();
-
-if (!$settings) {
-    $settings = [
-        'company_name' => 'Mi Empresa',
-        'currency_symbol' => '$',
-        'logo_path' => '',
-        'company_address' => '',
-        'company_phone' => '',
-        'receipt_footer' => ''
-    ];
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -24,29 +45,45 @@ if (!$settings) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuración - Sistema de Préstamos</title>
-    <link rel="stylesheet" href="style.css?v=2.0">
+    <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
     <div class="container">
         <header>
-            <h1>Sistema de Préstamos</h1>
+            <h1><i class="fas fa-cog"></i> Sistema de Préstamos</h1>
             <nav>
-                <a href="index.php">Inicio</a>
-                <a href="clients.php">Clientes</a>
-                <a href="active_loans.php">Abonar</a>
-                <a href="create_loan.php">Nuevo Préstamo</a>
-                <a href="reports.php">Reportes</a>
-                <a href="users.php">Usuarios</a>
-                <a href="settings.php" class="active">Configuración</a>
-                <a href="logout.php" style="color: #dc2626;">Cerrar Sesión</a>
+                <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
+                <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
+                <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
+                <a href="create_loan.php"><i class="fas fa-plus-circle"></i> Nuevo Préstamo</a>
+                <a href="reports.php"><i class="fas fa-chart-line"></i> Reportes</a>
+                <a href="portfolios.php"><i class="fas fa-briefcase"></i> Carteras</a>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+                    <a href="users.php"><i class="fas fa-user-shield"></i> Usuarios</a>
+                <?php endif; ?>
+                <a href="settings.php" class="active"><i class="fas fa-cog"></i> Configuración</a>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+                    <a href="backup.php"><i class="fas fa-database"></i> Backup</a>
+                <?php endif; ?>
+                <span
+                    style="color: #1a202c; font-weight: 600; font-size: 0.85rem; padding: 0.5rem 0.85rem; background: #fff; border-radius: 8px;">
+                    <i class="fas fa-user"></i> <?= htmlspecialchars($_SESSION['username']) ?>
+                </span>
+                <a href="logout.php" style="color: #dc2626;"><i class="fas fa-sign-out-alt"></i> Salir</a>
             </nav>
         </header>
 
         <div class="card" style="max-width: 600px; margin: 0 auto;">
-            <h2>Configuración de la Empresa</h2>
-            <form action="save_settings.php" method="POST" enctype="multipart/form-data" style="margin-top: 1.5rem;">
+            <h2><i class="fas fa-sliders-h"></i> Configuración del Sistema</h2>
+            <?php if ($message): ?>
+                <div style="background: #d1fae5; color: #065f46; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <i class="fas fa-check-circle"></i> <?= $message ?>
+                </div>
+            <?php endif; ?>
 
+            <form method="POST" enctype="multipart/form-data">
                 <div class="form-group">
                     <label>Nombre de la Empresa</label>
                     <input type="text" name="company_name" value="<?= htmlspecialchars($settings['company_name']) ?>"
@@ -54,69 +91,43 @@ if (!$settings) {
                 </div>
 
                 <div class="form-group">
-                    <label>Dirección</label>
-                    <input type="text" name="company_address"
-                        value="<?= htmlspecialchars($settings['company_address'] ?? '') ?>"
-                        placeholder="Ej. Calle Principal #123">
-                </div>
-
-                <div class="form-group">
-                    <label>Teléfono</label>
-                    <input type="text" name="company_phone"
-                        value="<?= htmlspecialchars($settings['company_phone'] ?? '') ?>" placeholder="Ej. 555-0000">
-                </div>
-
-                <div class="form-group">
                     <label>Símbolo de Moneda</label>
                     <input type="text" name="currency_symbol"
-                        value="<?= htmlspecialchars($settings['currency_symbol']) ?>" required placeholder="Ej. $ o €">
+                        value="<?= htmlspecialchars($settings['currency_symbol']) ?>" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Mensaje Pie de Recibo</label>
-                    <textarea name="receipt_footer" rows="3"
-                        placeholder="Ej. ¡Gracias por su pago!"><?= htmlspecialchars($settings['receipt_footer'] ?? '') ?></textarea>
+                    <label>Tasa de Interés por Defecto (%)</label>
+                    <input type="number" step="0.01" name="interest_rate"
+                        value="<?= htmlspecialchars($settings['interest_rate']) ?>" required>
                 </div>
 
                 <div class="form-group">
                     <label>Logo de la Empresa</label>
                     <?php if (!empty($settings['logo_path'])): ?>
                         <div style="margin-bottom: 1rem;">
-                            <img src="<?= htmlspecialchars($settings['logo_path']) ?>" alt="Logo Actual"
-                                style="max-height: 100px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+                            <img src="<?= htmlspecialchars($settings['logo_path']) ?>" alt="Current Logo"
+                                style="height: 50px;">
                         </div>
                     <?php endif; ?>
                     <input type="file" name="logo" accept="image/*">
-                    <small style="color: var(--text-light);">Deja vacío para mantener el actual. Formatos: PNG,
-                        JPG.</small>
+                    <input type="hidden" name="current_logo" value="<?= htmlspecialchars($settings['logo_path']) ?>">
                 </div>
 
-                <button type="submit" class="btn" style="width: 100%;">Guardar Cambios</button>
+                <button type="submit" class="btn"><i class="fas fa-save"></i> Guardar Cambios</button>
             </form>
 
-            <!-- Import Existing Loans Section -->
-            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #e2e8f0;">
-                <h3 style="color: #3b82f6;">📥 Importar Préstamos Existentes</h3>
-                <p style="color: #64748b; margin-bottom: 1rem;">
-                    Si tu empresa ya tiene préstamos activos, impórtalos al sistema para darles seguimiento.
-                </p>
-                <a href="import_loan.php" class="btn" style="background: #3b82f6; width: 100%; text-align: center;">
-                    📥 Importar Préstamo Existente
+            <hr style="margin: 2rem 0; border: 0; border-top: 1px solid #e2e8f0;">
+
+            <div style="background: #fee2e2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">
+                <h3 style="color: #b91c1c; margin-bottom: 0.5rem;"><i class="fas fa-exclamation-triangle"></i> Zona de
+                    Peligro</h3>
+                <p style="color: #7f1d1d; margin-bottom: 1rem;">Estas acciones son irreversibles.</p>
+                <a href="reset_system.php" class="btn btn-secondary" style="color: #dc2626; border-color: #dc2626;"
+                    onclick="return confirm('¿ESTÁS SEGURO? Esto borrará TODOS los préstamos, pagos y clientes. Solo quedarán los usuarios y la configuración.')">
+                    <i class="fas fa-trash"></i> Reiniciar Sistema (Factory Reset)
                 </a>
             </div>
-
-            <!-- Reset System Section -->
-            <?php if ($_SESSION['user_id'] == 1): ?>
-                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #e2e8f0;">
-                    <h3 style="color: #dc2626;">⚠️ Zona Peligrosa</h3>
-                    <p style="color: #64748b; margin-bottom: 1rem;">Reinicia el sistema para un nuevo cliente. Esta acción
-                        eliminará TODOS los datos.</p>
-                    <a href="reset_system.php" class="btn" style="background: #dc2626; width: 100%; text-align: center;"
-                        onclick="return confirm('¿Estás seguro? Esto te llevará a la página de reinicio del sistema.')">
-                        🗑️ Reiniciar Sistema Completo
-                    </a>
-                </div>
-            <?php endif; ?>
         </div>
     </div>
 </body>
