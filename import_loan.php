@@ -83,6 +83,7 @@ $clients = $pdo->query("SELECT * FROM clients ORDER BY name")->fetchAll();
                     <div class="form-group">
                         <label>Frecuencia de Pago *</label>
                         <select name="frequency" required>
+                            <option value="daily">Diario</option>
                             <option value="weekly">Semanal</option>
                             <option value="biweekly">Quincenal</option>
                             <option value="monthly">Mensual</option>

@@ -456,20 +456,6 @@ tbody tr:last-child td:last-child {
         border-color: transparent;
     }
 
-    nav a.active::before {
-        display: none;
-    }
-
-    .grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .card {
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-    }
-
     h1 {
         font-size: 1.5rem;
     }
@@ -588,5 +574,60 @@ tbody tr:last-child td:last-child {
     tr {
         page-break-inside: avoid;
         page-break-after: auto;
+    }
+}
+
+/* Centrar todo en móviles */
+@media (max-width: 768px) {
+    body {
+        text-align: center;
+    }
+
+    .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .grid,
+    .grid-2-3 {
+        width: 100%;
+    }
+
+    .card {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* Asegurar que los títulos y textos dentro de las cards estén centrados */
+    .card h3,
+    .card p,
+    .card h2 {
+        text-align: center;
+        width: 100%;
+    }
+
+    /* Centrar botones dentro de las cards */
+    .card .btn {
+        margin: 0.5rem auto;
+        display: inline-block;
+    }
+
+    /* Centrar tablas */
+    .table-responsive {
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    table {
+        margin: 0 auto;
+    }
+
+    /* Centrar contenido de celdas */
+    th,
+    td {
+        text-align: center;
     }
 }

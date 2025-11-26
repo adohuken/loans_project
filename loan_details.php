@@ -104,7 +104,8 @@ $currency = $settings['currency_symbol'] ?? '$';
 
                 <div style="margin-bottom: 1.5rem;">
                     <h3 style="color: var(--primary-solid); margin-bottom: 0.5rem;">
-                        <?= htmlspecialchars($loan['name']) ?></h3>
+                        <?= htmlspecialchars($loan['name']) ?>
+                    </h3>
                     <p><i class="fas fa-id-card"></i> <?= htmlspecialchars($loan['cedula'] ?? 'N/A') ?></p>
                     <p><i class="fas fa-phone"></i> <?= htmlspecialchars($loan['phone'] ?? 'N/A') ?></p>
                     <p><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($loan['address'] ?? 'N/A') ?></p>
@@ -121,16 +122,18 @@ $currency = $settings['currency_symbol'] ?? '$';
                     <div>
                         <small style="color: #64748b;">Monto Prestado</small>
                         <p style="font-weight: bold; font-size: 1.1rem;">
-                            <?= $currency ?><?= number_format($loan['amount'], 2) ?></p>
+                            <?= $currency ?><?= number_format($loan['amount'], 2) ?>
+                        </p>
                     </div>
                     <div>
                         <small style="color: #64748b;">Total a Pagar</small>
                         <p style="font-weight: bold; font-size: 1.1rem; color: var(--primary-solid);">
-                            <?= $currency ?><?= number_format($loan['total_amount'], 2) ?></p>
+                            <?= $currency ?><?= number_format($loan['total_amount'], 2) ?>
+                        </p>
                     </div>
                     <div>
                         <small style="color: #64748b;">Frecuencia</small>
-                        <p style="font-weight: bold; text-transform: capitalize;"><?= $loan['payment_frequency'] ?></p>
+                        <p style="font-weight: bold; text-transform: capitalize;"><?= $loan['frequency'] ?></p>
                     </div>
                     <div>
                         <small style="color: #64748b;">Estado</small>
@@ -149,7 +152,8 @@ $currency = $settings['currency_symbol'] ?? '$';
                         <div style="background: var(--success); width: <?= $progress ?>%; height: 100%;"></div>
                     </div>
                     <p style="text-align: right; font-size: 0.9rem; margin-top: 5px;">
-                        <?= number_format($progress, 1) ?>%</p>
+                        <?= number_format($progress, 1) ?>%
+                    </p>
                 </div>
             </div>
 
@@ -190,7 +194,7 @@ $currency = $settings['currency_symbol'] ?? '$';
                                     <!-- Columna Abonado -->
                                     <td
                                         style="color: <?= $payment['paid_amount'] > 0 ? '#10b981' : '#64748b' ?>; font-weight: bold;">
-                                        <?= $currency ?>    <?= number_format($payment['paid_amount'], 2) ?>
+                                        <?= $currency ?>     <?= number_format($payment['paid_amount'], 2) ?>
                                         <?php if ($is_partial): ?>
                                             <br><small
                                                 style="color: #f59e0b; font-weight: normal;">(<?= number_format(($payment['paid_amount'] / $payment['amount_due']) * 100, 0) ?>%)</small>
@@ -221,7 +225,15 @@ $currency = $settings['currency_symbol'] ?? '$';
                                             <span class="badge badge-pending">PENDIENTE</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?= $payment['paid_date'] ?? '-' ?></td>
+                                    <td>
+                                        <?php
+                                        if (!empty($payment['paid_date']) && $payment['paid_date'] != '0000-00-00 00:00:00') {
+                                            echo date('d/m/Y', strtotime($payment['paid_date']));
+                                        } else {
+                                            echo '-';
+                                        }
+                                        ?>
+                                    </td>
                                     <td class="no-print">
                                         <?php if ($payment['status'] != 'paid'): ?>
                                             <a href="process_payment.php?id=<?= $payment['id'] ?>" class="btn btn-sm">

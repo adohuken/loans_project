@@ -11,78 +11,143 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'cobrador') {
 // Date Filter
 $start_date = $_GET['start_date'] ?? date('Y-m-01');
 $end_date = $_GET['end_date'] ?? date('Y-m-t');
+$portfolio_filter = $_GET['portfolio'] ?? 'all';
+
+// Get all portfolios for the filter dropdown
+$portfolios = $pdo->query("SELECT id, name FROM portfolios ORDER BY name")->fetchAll();
 
 // 1. Total Lent in Range
-$stmt = $pdo->prepare("SELECT SUM(amount) FROM loans WHERE start_date BETWEEN ? AND ?");
-$stmt->execute([$start_date, $end_date]);
+if ($portfolio_filter === 'all') {
+    $stmt = $pdo->prepare("SELECT SUM(amount) FROM loans WHERE start_date BETWEEN ? AND ?");
+    $stmt->execute([$start_date, $end_date]);
+} else {
+    $stmt = $pdo->prepare("
+        SELECT SUM(l.amount) 
+        FROM loans l 
+        JOIN clients c ON l.client_id = c.id 
+        WHERE l.start_date BETWEEN ? AND ? 
+        AND c.portfolio_id = ?
+    ");
+    $stmt->execute([$start_date, $end_date, $portfolio_filter]);
+}
 $total_lent = $stmt->fetchColumn() ?: 0;
 
 // 2. Total Collected in Range
-$stmt = $pdo->prepare("SELECT SUM(paid_amount) FROM payments WHERE paid_date BETWEEN ? AND ? AND status = 'paid'");
-$stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59']);
+if ($portfolio_filter === 'all') {
+    $stmt = $pdo->prepare("SELECT SUM(paid_amount) FROM payments WHERE paid_date BETWEEN ? AND ? AND status = 'paid'");
+    $stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59']);
+} else {
+    $stmt = $pdo->prepare("
+        SELECT SUM(p.paid_amount) 
+        FROM payments p 
+        JOIN loans l ON p.loan_id = l.id 
+        JOIN clients c ON l.client_id = c.id 
+        WHERE p.paid_date BETWEEN ? AND ? 
+        AND p.status = 'paid' 
+        AND c.portfolio_id = ?
+    ");
+    $stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59', $portfolio_filter]);
+}
 $total_collected = $stmt->fetchColumn() ?: 0;
 
-// 3. Outstanding Balance
-$total_outstanding = $pdo->query("SELECT SUM(amount_due - paid_amount) FROM payments WHERE status = 'pending'")->fetchColumn() ?: 0;
-
-// 4. Loan Status Distribution (All time)
-$status_counts = $pdo->query("SELECT status, COUNT(*) as count FROM loans GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
-$active_count = $status_counts['active'] ?? 0;
-$paid_count = $status_counts['paid'] ?? 0;
-
-// 5. Monthly Income (Chart Data - Last 12 Months)
-$monthly_income = $pdo->query("
-    SELECT DATE_FORMAT(paid_date, '%Y-%m') as month, SUM(paid_amount) as total
-    FROM payments
-    WHERE status = 'paid' AND paid_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-    GROUP BY month
-    ORDER BY month ASC
-")->fetchAll(PDO::FETCH_KEY_PAIR);
-
-$months = [];
-$incomes = [];
-for ($i = 11; $i >= 0; $i--) {
-    $month = date('Y-m', strtotime("-$i months"));
-    $months[] = date('M Y', strtotime($month . '-01'));
-    $incomes[] = $monthly_income[$month] ?? 0;
+// 3. Outstanding Balance (Capital + Interest + Pending Late Fees)
+if ($portfolio_filter === 'all') {
+    $total_outstanding = $pdo->query("SELECT SUM((amount_due - paid_amount) + late_fee) FROM payments WHERE status = 'pending'")->fetchColumn() ?: 0;
+} else {
+    $stmt = $pdo->prepare("
+        SELECT SUM((p.amount_due - p.paid_amount) + p.late_fee) 
+        FROM payments p 
+        JOIN loans l ON p.loan_id = l.id 
+        JOIN clients c ON l.client_id = c.id 
+        WHERE p.status = 'pending' 
+        AND c.portfolio_id = ?
+    ");
+    $stmt->execute([$portfolio_filter]);
+    $total_outstanding = $stmt->fetchColumn() ?: 0;
 }
 
-// 6. Portfolio Statistics
-$portfolio_stats = $pdo->query("
-    SELECT 
-        COALESCE(p.name, 'Sin Asignar') as portfolio_name,
-        COUNT(DISTINCT c.id) as total_clients,
-        COUNT(DISTINCT l.id) as total_loans,
-        COALESCE(SUM(CASE WHEN l.status = 'active' THEN 1 ELSE 0 END), 0) as active_loans,
-        COALESCE(SUM(l.amount), 0) as total_lent,
-        COALESCE(SUM(l.total_amount), 0) as total_expected,
-        COALESCE(SUM(pay.paid_amount), 0) as total_collected,
-        COALESCE(SUM(CASE WHEN pay.status = 'pending' THEN pay.amount_due - pay.paid_amount ELSE 0 END), 0) as pending_balance
-    FROM portfolios p
-    LEFT JOIN clients c ON p.id = c.portfolio_id
-    LEFT JOIN loans l ON c.id = l.client_id
-    LEFT JOIN payments pay ON l.id = pay.loan_id
-    GROUP BY p.id, p.name
-    
-    UNION ALL
-    
-    SELECT 
-        'Sin Asignar' as portfolio_name,
-        COUNT(DISTINCT c.id) as total_clients,
-        COUNT(DISTINCT l.id) as total_loans,
-        COALESCE(SUM(CASE WHEN l.status = 'active' THEN 1 ELSE 0 END), 0) as active_loans,
-        COALESCE(SUM(l.amount), 0) as total_lent,
-        COALESCE(SUM(l.total_amount), 0) as total_expected,
-        COALESCE(SUM(pay.paid_amount), 0) as total_collected,
-        COALESCE(SUM(CASE WHEN pay.status = 'pending' THEN pay.amount_due - pay.paid_amount ELSE 0 END), 0) as pending_balance
-    FROM clients c
-    LEFT JOIN loans l ON c.id = l.client_id
-    LEFT JOIN payments pay ON l.id = pay.loan_id
-    WHERE c.portfolio_id IS NULL
-    HAVING total_clients > 0
-    
-    ORDER BY total_lent DESC
-")->fetchAll();
+// 4. Total Late Fees (Toda la mora registrada = Ganancia Neta)
+// Suma la mora ya cobrada + la mora pendiente (todo lo que se ha registrado)
+if ($portfolio_filter === 'all') {
+    $stmt = $pdo->query("
+        SELECT 
+            COALESCE(SUM(paid_late_fee), 0) + COALESCE(SUM(late_fee), 0) as total_late_fees
+        FROM payments
+    ");
+} else {
+    $stmt = $pdo->prepare("
+        SELECT 
+            COALESCE(SUM(p.paid_late_fee), 0) + COALESCE(SUM(p.late_fee), 0) as total_late_fees
+        FROM payments p 
+        JOIN loans l ON p.loan_id = l.id 
+        JOIN clients c ON l.client_id = c.id 
+        WHERE c.portfolio_id = ?
+    ");
+    $stmt->execute([$portfolio_filter]);
+}
+$total_late_fees = $stmt->fetchColumn() ?: 0;
+
+// 5. Portfolio Statistics
+if ($portfolio_filter === 'all') {
+    $portfolio_stats = $pdo->query("
+        SELECT 
+            COALESCE(p.name, 'Sin Asignar') as portfolio_name,
+            COUNT(DISTINCT c.id) as total_clients,
+            COUNT(DISTINCT l.id) as total_loans,
+            COALESCE(SUM(CASE WHEN l.status = 'active' THEN 1 ELSE 0 END), 0) as active_loans,
+            COALESCE(SUM(l.amount), 0) as total_lent,
+            COALESCE(SUM(l.total_amount), 0) as total_expected,
+            COALESCE(SUM(pay.paid_amount), 0) as total_collected,
+            COALESCE(SUM(pay.paid_late_fee) + SUM(pay.late_fee), 0) as total_late_fees_registered,
+            COALESCE(SUM(CASE WHEN pay.status = 'pending' THEN pay.amount_due - pay.paid_amount ELSE 0 END), 0) as pending_balance
+        FROM portfolios p
+        LEFT JOIN clients c ON p.id = c.portfolio_id
+        LEFT JOIN loans l ON c.id = l.client_id
+        LEFT JOIN payments pay ON l.id = pay.loan_id
+        GROUP BY p.id, p.name
+        
+        UNION ALL
+        
+        SELECT 
+            'Sin Asignar' as portfolio_name,
+            COUNT(DISTINCT c.id) as total_clients,
+            COUNT(DISTINCT l.id) as total_loans,
+            COALESCE(SUM(CASE WHEN l.status = 'active' THEN 1 ELSE 0 END), 0) as active_loans,
+            COALESCE(SUM(l.amount), 0) as total_lent,
+            COALESCE(SUM(l.total_amount), 0) as total_expected,
+            COALESCE(SUM(pay.paid_amount), 0) as total_collected,
+            COALESCE(SUM(pay.paid_late_fee) + SUM(pay.late_fee), 0) as total_late_fees_registered,
+            COALESCE(SUM(CASE WHEN pay.status = 'pending' THEN pay.amount_due - pay.paid_amount ELSE 0 END), 0) as pending_balance
+        FROM clients c
+        LEFT JOIN loans l ON c.id = l.client_id
+        LEFT JOIN payments pay ON l.id = pay.loan_id
+        WHERE c.portfolio_id IS NULL
+        HAVING total_clients > 0
+        
+        ORDER BY total_lent DESC
+    ")->fetchAll();
+} else {
+    $stmt = $pdo->prepare("
+        SELECT 
+            COALESCE(p.name, 'Sin Asignar') as portfolio_name,
+            COUNT(DISTINCT c.id) as total_clients,
+            COUNT(DISTINCT l.id) as total_loans,
+            COALESCE(SUM(CASE WHEN l.status = 'active' THEN 1 ELSE 0 END), 0) as active_loans,
+            COALESCE(SUM(l.amount), 0) as total_lent,
+            COALESCE(SUM(l.total_amount), 0) as total_expected,
+            COALESCE(SUM(pay.paid_amount), 0) as total_collected,
+            COALESCE(SUM(pay.paid_late_fee) + SUM(pay.late_fee), 0) as total_late_fees_registered,
+            COALESCE(SUM(CASE WHEN pay.status = 'pending' THEN pay.amount_due - pay.paid_amount ELSE 0 END), 0) as pending_balance
+        FROM portfolios p
+        LEFT JOIN clients c ON p.id = c.portfolio_id
+        LEFT JOIN loans l ON c.id = l.client_id
+        LEFT JOIN payments pay ON l.id = pay.loan_id
+        WHERE p.id = ?
+        GROUP BY p.id, p.name
+    ");
+    $stmt->execute([$portfolio_filter]);
+    $portfolio_stats = $stmt->fetchAll();
+}
 
 // Fetch Settings for Currency
 $stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
@@ -98,9 +163,8 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reportes Financieros - <?= htmlspecialchars($company_name) ?></title>
-    <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="style.css?v=3.5">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -133,6 +197,17 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
             <h2><i class="fas fa-filter"></i> Filtrar Reporte</h2>
             <form method="GET" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
                 <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label>Cartera</label>
+                    <select name="portfolio">
+                        <option value="all" <?= $portfolio_filter === 'all' ? 'selected' : '' ?>>Todas las Carteras</option>
+                        <?php foreach ($portfolios as $portfolio): ?>
+                            <option value="<?= $portfolio['id'] ?>" <?= $portfolio_filter == $portfolio['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($portfolio['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
                     <label>Fecha Inicio</label>
                     <input type="date" name="start_date" value="<?= $start_date ?>">
                 </div>
@@ -156,7 +231,7 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
             </div>
             <div class="card" style="border-left: 4px solid #10b981;">
                 <h3><i class="fas fa-money-bill-wave"></i> Total Recaudado</h3>
-                <small style="color: #64748b;">En el periodo seleccionado</small>
+                <small style="color: #64748b;">En el periodo seleccionado (Capital + Interés)</small>
                 <p style="font-size: 2rem; font-weight: bold; color: #10b981;">
                     <?= $currency ?><?= number_format($total_collected, 2) ?>
                 </p>
@@ -168,20 +243,12 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
                     <?= $currency ?><?= number_format($total_outstanding, 2) ?>
                 </p>
             </div>
-        </div>
-
-        <div class="grid" style="margin-top: 2rem; grid-template-columns: 2fr 1fr;">
-            <div class="card">
-                <h3><i class="fas fa-chart-area"></i> Ingresos Mensuales (Últimos 12 Meses)</h3>
-                <div style="height: 300px;">
-                    <canvas id="incomeChart"></canvas>
-                </div>
-            </div>
-            <div class="card">
-                <h3><i class="fas fa-chart-pie"></i> Estado de la Cartera</h3>
-                <div style="height: 300px; display: flex; justify-content: center;">
-                    <canvas id="statusChart"></canvas>
-                </div>
+            <div class="card" style="border-left: 4px solid #8b5cf6;">
+                <h3><i class="fas fa-chart-line"></i> Mora Registrada</h3>
+                <small style="color: #64748b;">Ganancia Neta (Total de Moras)</small>
+                <p style="font-size: 2rem; font-weight: bold; color: #8b5cf6;">
+                    <?= $currency ?><?= number_format($total_late_fees, 2) ?>
+                </p>
             </div>
         </div>
 
@@ -201,7 +268,8 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
                             <th>Total Prestado</th>
                             <th>Total Esperado</th>
                             <th>Recaudado</th>
-                            <th>Pendiente</th>
+                            <th>Mora Registrada</th>
+                            <th>Saldo Capital</th>
                             <th>% Recuperación</th>
                         </tr>
                     </thead>
@@ -228,6 +296,9 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
                                 <td style="color: #10b981; font-weight: bold;">
                                     <?= $currency ?>    <?= number_format($stat['total_collected'], 2) ?>
                                 </td>
+                                <td style="color: #8b5cf6; font-weight: bold;">
+                                    <?= $currency ?>    <?= number_format($stat['total_late_fees_registered'], 2) ?>
+                                </td>
                                 <td style="color: #f59e0b; font-weight: bold;">
                                     <?= $currency ?>    <?= number_format($stat['pending_balance'], 2) ?>
                                 </td>
@@ -248,7 +319,7 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
                         <?php endforeach; ?>
                         <?php if (empty($portfolio_stats)): ?>
                             <tr>
-                                <td colspan="9" style="text-align: center; padding: 2rem; color: #64748b;">
+                                <td colspan="10" style="text-align: center; padding: 2rem; color: #64748b;">
                                     No hay datos de carteras disponibles
                                 </td>
                             </tr>
@@ -258,54 +329,6 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
             </div>
         </div>
     </div>
-
-    <script>
-        // Income Chart
-        new Chart(document.getElementById('incomeChart'), {
-            type: 'line',
-            data: {
-                labels: <?= json_encode($months) ?>,
-                datasets: [{
-                    label: 'Ingresos',
-                    data: <?= json_encode($incomes) ?>,
-                    borderColor: '#6366f1',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: { beginAtZero: true }
-                }
-            }
-        });
-
-        // Status Chart
-        new Chart(document.getElementById('statusChart'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Activos', 'Pagados'],
-                datasets: [{
-                    data: [<?= $active_count ?>, <?= $paid_count ?>],
-                    backgroundColor: ['#f59e0b', '#10b981'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
-            }
-        });
-    </script>
 </body>
 
 </html>

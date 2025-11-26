@@ -19,6 +19,8 @@ try {
 
     // Calculate number of payments
     $num_payments = 0;
+    if ($frequency === 'daily')
+        $num_payments = $duration_months * 30;
     if ($frequency === 'weekly')
         $num_payments = $duration_months * 4;
     if ($frequency === 'biweekly')
@@ -44,7 +46,10 @@ try {
 
     for ($i = 1; $i <= $num_payments; $i++) {
         // Calculate due date
-        if ($frequency === 'weekly') {
+        if ($frequency === 'daily') {
+            $due_date = clone $current_date;
+            $due_date->modify('+' . ($i - 1) . ' days');
+        } elseif ($frequency === 'weekly') {
             $due_date = clone $current_date;
             $due_date->modify('+' . (($i - 1) * 7) . ' days');
         } elseif ($frequency === 'biweekly') {

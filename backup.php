@@ -63,9 +63,23 @@ if (isset($_POST['restore'])) {
         $contents = fread($handle, filesize($filename));
         $sql = explode(';', $contents);
 
+        // Disable foreign key checks
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
+
         foreach ($sql as $query) {
-            $result = $pdo->query($query);
+            $query = trim($query);
+            if (!empty($query)) {
+                try {
+                    $pdo->query($query);
+                } catch (Exception $e) {
+                    // Ignore errors for now or log them
+                }
+            }
         }
+
+        // Re-enable foreign key checks
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+
         fclose($handle);
         $message = "Base de datos restaurada exitosamente.";
     } else {

@@ -65,15 +65,15 @@ $recent_loans = $pdo->query("
 
 <body>
     <div class="container">
-        <header>
-            <div style="display: flex; align-items: center; gap: 1rem;">
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
                 <?php if (!empty($logo_path)): ?>
                     <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
-                        style="height: 50px; width: auto; object-fit: contain;">
+                        style="height: 60px; width: auto; object-fit: contain;">
                 <?php endif; ?>
-                <h1><i class="fas fa-chart-pie"></i> <?= htmlspecialchars($company_name) ?></h1>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
             </div>
-            <nav>
+            <nav style="justify-content: center;">
                 <a href="index.php" class="active"><i class="fas fa-home"></i> Inicio</a>
                 <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
                 <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>

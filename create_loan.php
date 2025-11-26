@@ -21,19 +21,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount = $_POST['amount'];
     $interest_rate = $_POST['interest_rate'];
     $payment_frequency = $_POST['payment_frequency'];
-    $duration = $_POST['duration']; // Number of installments
+    $months = $_POST['months']; // Plazo en meses
     $start_date = $_POST['start_date'];
 
-    // Calculate Total Amount
-    $interest_amount = $amount * ($interest_rate / 100);
+    // Calculate number of installments based on frequency and months
+    if ($payment_frequency == 'daily') {
+        $duration = $months * 30; // Aproximadamente 30 días por mes
+    } elseif ($payment_frequency == 'weekly') {
+        $duration = $months * 4; // 4 semanas por mes
+    } elseif ($payment_frequency == 'biweekly') {
+        $duration = $months * 2; // 2 quincenas por mes
+    } elseif ($payment_frequency == 'monthly') {
+        $duration = $months; // 1 pago por mes
+    }
+
+    // Calculate Total Amount (Interest is MONTHLY)
+    $interest_amount = $amount * ($interest_rate / 100) * $months; // Interés mensual × meses
     $total_amount = $amount + $interest_amount;
 
     // Calculate Installment Amount
     $installment_amount = $total_amount / $duration;
 
-    // Insert Loan
-    $stmt = $pdo->prepare("INSERT INTO loans (client_id, amount, interest_rate, payment_frequency, duration, start_date, total_amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')");
-    $stmt->execute([$client_id, $amount, $interest_rate, $payment_frequency, $duration, $start_date, $total_amount]);
+    // Insert Loan (usando nombres de columnas correctos según database.sql)
+    $stmt = $pdo->prepare("INSERT INTO loans (client_id, amount, interest_rate, frequency, duration_months, start_date, total_amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')");
+    $stmt->execute([$client_id, $amount, $interest_rate, $payment_frequency, $months, $start_date, $total_amount]);
     $loan_id = $pdo->lastInsertId();
 
     // Generate Payment Schedule
@@ -73,14 +84,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function calculateTotal() {
             const amount = parseFloat(document.getElementById('amount').value) || 0;
             const interest = parseFloat(document.getElementById('interest_rate').value) || 0;
-            const duration = parseInt(document.getElementById('duration').value) || 1;
+            const months = parseInt(document.getElementById('months').value) || 1;
+            const frequency = document.getElementById('payment_frequency').value;
 
-            const totalInterest = amount * (interest / 100);
+            // Calculate number of installments based on frequency
+            let duration = months;
+            if (frequency === 'daily') {
+                duration = months * 30;
+            } else if (frequency === 'weekly') {
+                duration = months * 4;
+            } else if (frequency === 'biweekly') {
+                duration = months * 2;
+            } else if (frequency === 'monthly') {
+                duration = months;
+            }
+
+            // Interest is MONTHLY: amount × (rate/100) × months
+            const totalInterest = amount * (interest / 100) * months;
             const total = amount + totalInterest;
             const installment = total / duration;
 
             document.getElementById('display_total').innerText = total.toFixed(2);
             document.getElementById('display_installment').innerText = installment.toFixed(2);
+            document.getElementById('display_installments').innerText = duration;
         }
     </script>
 </head>
@@ -88,7 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-plus-circle"></i> Sistema de Préstamos</h1>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <h1><i class="fas fa-plus-circle"></i> Sistema de Préstamos</h1>
+            </div>
             <nav>
                 <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
                 <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
@@ -134,15 +162,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="form-group">
-                        <label>Tasa de Interés (%)</label>
+                        <label>Tasa de Interés (% Mensual)</label>
                         <input type="number" step="0.01" name="interest_rate" id="interest_rate"
                             value="<?= $default_interest ?>" required oninput="calculateTotal()">
-                        <small style="color: #64748b;">Interés total sobre el monto prestado.</small>
+                        <small style="color: #64748b;">Interés mensual que se multiplica por el plazo.</small>
                     </div>
 
                     <div class="form-group">
                         <label>Frecuencia de Pago</label>
-                        <select name="payment_frequency" required>
+                        <select name="payment_frequency" id="payment_frequency" required onchange="calculateTotal()">
                             <option value="daily">Diario</option>
                             <option value="weekly">Semanal</option>
                             <option value="biweekly">Quincenal</option>
@@ -151,9 +179,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="form-group">
-                        <label>Número de Cuotas</label>
-                        <input type="number" name="duration" id="duration" value="1" required min="1"
+                        <label>Plazo (Meses)</label>
+                        <input type="number" name="months" id="months" value="1" required min="1"
                             oninput="calculateTotal()">
+                        <small style="color: #64748b;">Número de cuotas: <strong
+                                id="display_installments">1</strong></small>
                     </div>
 
                     <div class="form-group">

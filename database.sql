@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS loans (
     client_id INT NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     interest_rate DECIMAL(5, 2) NOT NULL,
-    frequency ENUM('weekly', 'biweekly', 'monthly') NOT NULL,
+    frequency ENUM('daily', 'weekly', 'biweekly', 'monthly') NOT NULL,
     duration_months INT NOT NULL,
     total_amount DECIMAL(10, 2) NOT NULL,
     start_date DATE NOT NULL,
