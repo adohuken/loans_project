@@ -2,6 +2,12 @@
 require 'auth.php';
 require 'db.php';
 
+// Fetch Settings
+$stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
+$settings = $stmt_settings->fetch();
+$company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
+$logo_path = $settings['logo_path'] ?? '';
+
 // Check user role and filter loans accordingly
 $user_role = $_SESSION['role'] ?? 'admin';
 $user_portfolio_id = $_SESSION['portfolio_id'] ?? null;
@@ -54,16 +60,26 @@ if ($user_role === 'cobrador') {
 
 <body>
     <div class="container">
-        <header>
-            <h1><i class="fas fa-hand-holding-usd"></i> Sistema de Préstamos</h1>
-            <nav>
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <?php if (!empty($logo_path)): ?>
+                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
+                        style="height: 60px; width: auto; object-fit: contain;">
+                <?php endif; ?>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+            </div>
+            <nav style="justify-content: center;">
                 <?php if ($user_role !== 'cobrador'): ?>
                     <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
+                <?php endif; ?>
+                <?php if ($user_role !== 'cobrador'): ?>
                     <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
                 <?php endif; ?>
                 <a href="active_loans.php" class="active"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
                 <?php if ($user_role !== 'cobrador'): ?>
                     <a href="create_loan.php"><i class="fas fa-plus-circle"></i> Nuevo Préstamo</a>
+                <?php endif; ?>
+                <?php if ($user_role !== 'cobrador'): ?>
                     <a href="reports.php"><i class="fas fa-chart-line"></i> Reportes</a>
                     <a href="portfolios.php"><i class="fas fa-briefcase"></i> Carteras</a>
                 <?php endif; ?>
@@ -80,7 +96,7 @@ if ($user_role === 'cobrador') {
                     style="color: #1a202c; font-weight: 600; font-size: 0.85rem; padding: 0.5rem 0.85rem; background: #fff; border-radius: 8px;">
                     <i class="fas fa-user"></i> <?= htmlspecialchars($_SESSION['username']) ?>
                 </span>
-                <a href="logout.php" style="color: #dc2626;"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+                <a href="logout.php" style="color: #dc2626;"><i class="fas fa-sign-out-alt"></i> Salir</a>
             </nav>
         </header>
 
@@ -94,6 +110,10 @@ if ($user_role === 'cobrador') {
                 </div>
             <?php endif; ?>
             <p style="color: #64748b; margin-bottom: 1rem;">Selecciona un préstamo para registrar un pago.</p>
+            <div style="margin-bottom: 1rem;">
+                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Buscar por cliente..."
+                    style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem;">
+            </div>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -153,6 +173,26 @@ if ($user_role === 'cobrador') {
             </div>
         </div>
     </div>
+<script>
+function filterTable() {
+  var input, filter, table, tr, td, i, txtValue;
+  input = document.getElementById("searchInput");
+  filter = input.value.toUpperCase();
+  table = document.querySelector("table");
+  tr = table.getElementsByTagName("tr");
+  for (i = 1; i < tr.length; i++) {
+    td = tr[i].getElementsByTagName("td")[1]; // Columna Cliente
+    if (td) {
+      txtValue = td.textContent || td.innerText;
+      if (txtValue.toUpperCase().indexOf(filter) > -1) {
+        tr[i].style.display = "";
+      } else {
+        tr[i].style.display = "none";
+      }
+    }       
+  }
+}
+</script>
 </body>
 
 </html>

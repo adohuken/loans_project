@@ -49,6 +49,8 @@ $progress = ($loan['total_amount'] > 0) ? ($total_paid / $loan['total_amount']) 
 $stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
 $settings = $stmt_settings->fetch();
 $currency = $settings['currency_symbol'] ?? '$';
+$company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
+$logo_path = $settings['logo_path'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -58,21 +60,32 @@ $currency = $settings['currency_symbol'] ?? '$';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalles del Préstamo #<?= $loan['id'] ?></title>
     <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="mobile.css?v=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
     <div class="container">
-        <header class="no-print">
-            <h1><i class="fas fa-file-invoice-dollar"></i> Sistema de Préstamos</h1>
-            <nav>
-                <?php if ($user_role !== 'cobrador'): ?>
-                    <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
-                    <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <?php if (!empty($logo_path)): ?>
+                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
+                        style="height: 60px; width: auto; object-fit: contain;">
                 <?php endif; ?>
-                <a href="active_loans.php" class="active"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+            </div>
+            <nav style="justify-content: center;">
+                <?php if ($user_role !== 'cobrador'): ?>
+                    <a href="index.php" class="active"><i class="fas fa-home"></i> Inicio</a>
+                <?php endif; ?>
+                <?php if ($user_role !== 'cobrador'): ?>
+                <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
+                <?php endif; ?>
+                <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
                 <?php if ($user_role !== 'cobrador'): ?>
                     <a href="create_loan.php"><i class="fas fa-plus-circle"></i> Nuevo Préstamo</a>
+                <?php endif; ?>
+                <?php if ($user_role !== 'cobrador'): ?>
                     <a href="reports.php"><i class="fas fa-chart-line"></i> Reportes</a>
                     <a href="portfolios.php"><i class="fas fa-briefcase"></i> Carteras</a>
                 <?php endif; ?>
@@ -89,7 +102,7 @@ $currency = $settings['currency_symbol'] ?? '$';
                     style="color: #1a202c; font-weight: 600; font-size: 0.85rem; padding: 0.5rem 0.85rem; background: #fff; border-radius: 8px;">
                     <i class="fas fa-user"></i> <?= htmlspecialchars($_SESSION['username']) ?>
                 </span>
-                <a href="logout.php" style="color: #dc2626;"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+                <a href="logout.php" style="color: #dc2626;"><i class="fas fa-sign-out-alt"></i> Salir</a>
             </nav>
         </header>
 
@@ -132,8 +145,30 @@ $currency = $settings['currency_symbol'] ?? '$';
                         </p>
                     </div>
                     <div>
+                        <small style="color: #64748b;"><i class="fas fa-check-circle"></i> Total Pagado</small>
+                        <p style="font-weight: bold; font-size: 1.1rem; color: var(--success);">
+                            <?= $currency ?><?= number_format($total_paid, 2) ?>
+                        </p>
+                    </div>
+                    <div>
+                        <small style="color: #64748b;"><i class="fas fa-wallet"></i> Saldo Restante</small>
+                        <p
+                            style="font-weight: bold; font-size: 1.1rem; color: <?= ($loan['total_amount'] - $total_paid) > 0 ? '#f59e0b' : 'var(--success)' ?>;">
+                            <?= $currency ?><?= number_format($loan['total_amount'] - $total_paid, 2) ?>
+                        </p>
+                    </div>
+                    <div>
                         <small style="color: #64748b;">Frecuencia</small>
-                        <p style="font-weight: bold; text-transform: capitalize;"><?= $loan['frequency'] ?></p>
+                        <p style="font-weight: bold;">
+                            <?php
+                            $frequencies = [
+                                'weekly' => 'Semanal',
+                                'biweekly' => 'Quincenal',
+                                'monthly' => 'Mensual'
+                            ];
+                            echo $frequencies[strtolower($loan['frequency'])] ?? $loan['frequency'];
+                            ?>
+                        </p>
                     </div>
                     <div>
                         <small style="color: #64748b;">Estado</small>

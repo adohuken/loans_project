@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Keep only admin user (id = 1), delete others
             $pdo->exec("DELETE FROM users WHERE id != 1");
             // Reset admin password to 'admin'
-            $hash = password_hash('admin', PASSWORD_DEFAULT);
+            $hash = password_hash('superadmin123', PASSWORD_DEFAULT);
             $stmt = $pdo->prepare("UPDATE users SET password = ?, role = 'superadmin' WHERE id = 1");
             $stmt->execute([$hash]);
 
@@ -140,8 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         Exitosamente</h3>
                     <p style="margin: 0; color: #166534;">Todos los datos han sido eliminados. El sistema está listo para
                         una nueva empresa.</p>
-                    <p style="margin: 0.5rem 0 0 0; color: #166534;"><strong>Usuario:</strong> admin |
-                        <strong>Contraseña:</strong> admin</p>
+                    <p style="margin: 0.5rem 0 0 0; color: #166534;"><strong>Usuario:</strong> superadmin |
+                        <strong>Contraseña:</strong> superadmin123</p>
                 </div>
                 <a href="settings.php" class="btn"><i class="fas fa-arrow-left"></i> Volver a Configuración</a>
                 <a href="logout.php" class="btn btn-secondary" style="margin-left: 10px;"><i
@@ -169,13 +169,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <li>✗ Todos los <strong>Préstamos</strong></li>
                         <li>✗ Todos los <strong>Pagos</strong> y calendarios</li>
                         <li>✗ Todas las <strong>Carteras</strong> (excepto la predeterminada)</li>
-                        <li>✗ Todos los <strong>Usuarios</strong> (excepto admin)</li>
+                        <li>✗ Todos los <strong>Usuarios</strong> (excepto superadmin)</li>
                         <li>✗ Toda la <strong>Configuración</strong> de la empresa (logo, nombre, etc.)</li>
                     </ul>
 
                     <h3 style="margin-top: 1.5rem;"><i class="fas fa-check-circle"></i> Se Mantendrá:</h3>
                     <ul style="margin: 0; padding-left: 1.5rem; color: #10b981;">
-                        <li>✓ Usuario <strong>admin</strong> (contraseña: admin)</li>
+                        <li>✓ Usuario <strong>superadmin</strong> (contraseña: superadmin123)</li>
                         <li>✓ Estructura de la base de datos</li>
                     </ul>
                 </div>

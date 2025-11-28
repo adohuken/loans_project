@@ -1,0 +1,192 @@
+/* ========================================
+   ESTILOS EXCLUSIVOS PARA MÓVILES
+   Solo se aplican en pantallas ≤768px
+   ======================================== */
+
+@media (max-width: 768px) {
+
+    /* BODY Y CONTENEDOR */
+    body {
+        text-align: center !important;
+    }
+
+    .container {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+
+    /* HEADER COMPLETO */
+    header,
+    header[style] {
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        width: 100% !important;
+    }
+
+    /* DIV DEL LOGO Y NOMBRE */
+    header>div,
+    header>div[style] {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        width: 100% !important;
+    }
+
+    /* LOGO */
+    header img {
+        margin: 0 auto !important;
+        display: block !important;
+    }
+
+    /* NOMBRE DE EMPRESA */
+    header h1 {
+        text-align: center !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+    }
+
+    /* NAVEGACIÓN */
+    nav,
+    nav[style],
+    header nav,
+    header nav[style] {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+    }
+
+    /* GRID DE CARDS - 2x2 en tablets */
+    .grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 1rem !important;
+        width: 100% !important;
+    }
+
+    /* CARDS */
+    .card {
+        text-align: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+
+    /* CONTENIDO DE CARDS */
+    .card>*,
+    .card h1,
+    .card h2,
+    .card h3,
+    .card p,
+    .card div {
+        text-align: center !important;
+        width: 100% !important;
+    }
+
+    /* CANVAS DE GRÁFICOS */
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block !important;
+        margin: 0 auto !important;
+    }
+
+    .card canvas {
+        width: 100% !important;
+        max-width: 280px !important;
+        margin: 1rem auto !important;
+    }
+
+    /* ELEMENTOS CON DISPLAY FLEX INLINE */
+    [style*="display: flex"],
+    [style*="display:flex"],
+    div[style*="display: flex"],
+    div[style*="display:flex"] {
+        justify-content: center !important;
+        align-items: center !important;
+    }
+
+    /* TABLAS MÁS PEQUEÑAS Y COMPACTAS */
+    .table-responsive {
+        display: flex !important;
+        justify-content: center !important;
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    .table-responsive table {
+        font-size: 0.7rem !important;
+        min-width: auto !important;
+    }
+
+    th {
+        font-size: 0.65rem !important;
+        padding: 0.4rem 0.3rem !important;
+        text-align: center !important;
+        white-space: nowrap;
+    }
+
+    td {
+        font-size: 0.7rem !important;
+        padding: 0.5rem 0.3rem !important;
+        text-align: center !important;
+    }
+
+    /* Botones más pequeños en tablas */
+    td .btn,
+    td .btn-sm {
+        padding: 0.3rem 0.6rem !important;
+        font-size: 0.65rem !important;
+    }
+
+    /* Badges más pequeños */
+    .badge {
+        font-size: 0.6rem !important;
+        padding: 0.25rem 0.5rem !important;
+    }
+
+    /* Títulos de cards más pequeños */
+    .card>h2 {
+        font-size: 1rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+}
+
+/* MÓVILES PEQUEÑOS - 1 columna */
+@media (max-width: 480px) {
+    .grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .card canvas {
+        max-width: 250px !important;
+    }
+
+    /* Tablas aún más pequeñas */
+    th {
+        font-size: 0.6rem !important;
+        padding: 0.3rem 0.2rem !important;
+    }
+
+    td {
+        font-size: 0.65rem !important;
+        padding: 0.4rem 0.2rem !important;
+    }
+
+    td .btn,
+    td .btn-sm {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.6rem !important;
+    }
+
+    .badge {
+        font-size: 0.55rem !important;
+        padding: 0.2rem 0.4rem !important;
+    }
+}

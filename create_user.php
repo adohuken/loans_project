@@ -56,6 +56,13 @@ $portfolios = $stmt_portfolios->fetchAll();
 
         <div class="card" style="max-width: 500px; margin: 0 auto;">
             <h2>Crear Nuevo Usuario</h2>
+            
+            <?php if (isset($_GET["error"])): ?>
+                <div style="background: #fee2e2; border: 1px solid #fecaca; color: #dc2626; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($_GET["error"]) ?>
+                </div>
+            <?php endif; ?>
+
             <form action="save_user.php" method="POST" style="margin-top: 1rem;">
                 <div class="form-group">
                     <label>Nombre de Usuario</label>

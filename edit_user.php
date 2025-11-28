@@ -2,6 +2,12 @@
 require 'auth.php';
 require 'db.php';
 
+// Fetch Settings
+$stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
+$settings = $stmt_settings->fetch();
+$company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
+$logo_path = $settings['logo_path'] ?? '';
+
 // Access Control: Only superadmin can access this page
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
     header("Location: index.php");
@@ -29,6 +35,8 @@ $portfolios = $stmt_portfolios->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar Usuario - Sistema de Préstamos</title>
     <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="mobile.css?v=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         function togglePortfolio() {
             const role = document.getElementById('role').value;
@@ -49,21 +57,33 @@ $portfolios = $stmt_portfolios->fetchAll();
 
 <body>
     <div class="container">
-        <header>
-            <h1>Sistema de Préstamos</h1>
-            <nav>
-                <a href="index.php">Inicio</a>
-                <a href="clients.php">Clientes</a>
-                <a href="active_loans.php">Abonar</a>
-                <a href="create_loan.php">Nuevo Préstamo</a>
-                <a href="reports.php">Reportes</a>
-                <a href="portfolios.php">Carteras</a>
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
-                    <a href="users.php" class="active">Usuarios</a>
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <?php if (!empty($logo_path)): ?>
+                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
+                        style="height: 60px; width: auto; object-fit: contain;">
                 <?php endif; ?>
-                <a href="settings.php">Configuración</a>
-                <a href="backup.php">Backup</a>
-                <a href="logout.php" style="color: #dc2626;">Cerrar Sesión</a>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+            </div>
+            <nav style="justify-content: center;">
+                <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
+                <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
+                <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
+                <a href="create_loan.php"><i class="fas fa-plus-circle"></i> Nuevo Préstamo</a>
+                <a href="reports.php"><i class="fas fa-chart-line"></i> Reportes</a>
+                <a href="portfolios.php"><i class="fas fa-briefcase"></i> Carteras</a>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+                    <a href="users.php" class="active"><i class="fas fa-user-shield"></i> Usuarios</a>
+                <?php endif; ?>
+                <a href="settings.php"><i class="fas fa-cog"></i> Configuración</a>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+                    <a href="backup.php"><i class="fas fa-database"></i> Backup</a>
+                <?php endif; ?>
+                <span
+                    style="color: #1a202c; font-weight: 600; font-size: 0.85rem; padding: 0.5rem 0.85rem; background: #fff; border-radius: 8px;">
+                    <i class="fas fa-user"></i> <?= htmlspecialchars($_SESSION['username']) ?>
+                </span>
+                <a href="logout.php" style="color: #dc2626;"><i class="fas fa-sign-out-alt"></i> Salir</a>
             </nav>
         </header>
 

@@ -2,6 +2,12 @@
 require 'auth.php';
 require 'db.php';
 
+// Fetch Settings
+$stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
+$settings = $stmt_settings->fetch();
+$company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
+$logo_path = $settings['logo_path'] ?? '';
+
 // Check if user is cobrador and redirect to active_loans
 if (isset($_SESSION['role']) && $_SESSION['role'] === 'cobrador') {
     header("Location: active_loans.php");
@@ -41,9 +47,15 @@ $clients = $pdo->query("
 
 <body>
     <div class="container">
-        <header>
-            <h1><i class="fas fa-users"></i> Sistema de Préstamos</h1>
-            <nav>
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <?php if (!empty($logo_path)): ?>
+                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
+                        style="height: 60px; width: auto; object-fit: contain;">
+                <?php endif; ?>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+            </div>
+            <nav style="justify-content: center;">
                 <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
                 <a href="clients.php" class="active"><i class="fas fa-users"></i> Clientes</a>
                 <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
@@ -101,6 +113,11 @@ $clients = $pdo->query("
 
             <div class="card">
                 <h2><i class="fas fa-list"></i> Lista de Clientes</h2>
+                <div style="margin-bottom: 1rem;">
+                    <input type="text" id="searchInput" onkeyup="filterTable()"
+                        placeholder="Buscar por nombre o cédula..."
+                        style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem;">
+                </div>
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -149,6 +166,28 @@ $clients = $pdo->query("
             </div>
         </div>
     </div>
+<script>
+function filterTable() {
+  var input, filter, table, tr, tdName, tdCedula, i, txtValueName, txtValueCedula;
+  input = document.getElementById("searchInput");
+  filter = input.value.toUpperCase();
+  table = document.querySelector("table");
+  tr = table.getElementsByTagName("tr");
+  for (i = 1; i < tr.length; i++) {
+    tdCedula = tr[i].getElementsByTagName("td")[1];
+    tdName = tr[i].getElementsByTagName("td")[2];
+    if (tdName || tdCedula) {
+      txtValueName = tdName.textContent || tdName.innerText;
+      txtValueCedula = tdCedula.textContent || tdCedula.innerText;
+      if (txtValueName.toUpperCase().indexOf(filter) > -1 || txtValueCedula.toUpperCase().indexOf(filter) > -1) {
+        tr[i].style.display = "";
+      } else {
+        tr[i].style.display = "none";
+      }
+    }       
+  }
+}
+</script>
 </body>
 
 </html>

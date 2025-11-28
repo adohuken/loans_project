@@ -15,6 +15,8 @@ $clients = $pdo->query("SELECT * FROM clients ORDER BY name ASC")->fetchAll();
 $stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
 $settings = $stmt_settings->fetch();
 $default_interest = $settings['interest_rate'] ?? 15;
+$company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
+$logo_path = $settings['logo_path'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $client_id = $_POST['client_id'];
@@ -79,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nuevo Préstamo - Sistema de Préstamos</title>
     <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="mobile.css?v=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         function calculateTotal() {
@@ -113,11 +116,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body>
     <div class="container">
-        <header>
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <h1><i class="fas fa-plus-circle"></i> Sistema de Préstamos</h1>
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <?php if (!empty($logo_path)): ?>
+                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
+                        style="height: 60px; width: auto; object-fit: contain;">
+                <?php endif; ?>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
             </div>
-            <nav>
+            <nav style="justify-content: center;">
                 <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
                 <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
                 <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
@@ -164,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label>Tasa de Interés (% Mensual)</label>
                         <input type="number" step="0.01" name="interest_rate" id="interest_rate"
-                            value="<?= $default_interest ?>" required oninput="calculateTotal()">
+                             required oninput="calculateTotal()">
                         <small style="color: #64748b;">Interés mensual que se multiplica por el plazo.</small>
                     </div>
 
@@ -180,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="form-group">
                         <label>Plazo (Meses)</label>
-                        <input type="number" name="months" id="months" value="1" required min="1"
+                        <input type="number" name="months" id="months"  required min="1"
                             oninput="calculateTotal()">
                         <small style="color: #64748b;">Número de cuotas: <strong
                                 id="display_installments">1</strong></small>

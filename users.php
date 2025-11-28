@@ -2,6 +2,12 @@
 require 'auth.php';
 require 'db.php';
 
+// Fetch Settings
+$stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
+$settings = $stmt_settings->fetch();
+$company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
+$logo_path = $settings['logo_path'] ?? '';
+
 // Only SuperAdmin can access this page
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
     header("Location: index.php");
@@ -39,14 +45,21 @@ $users = $pdo->query("
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Usuarios - Sistema de Préstamos</title>
     <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="mobile.css?v=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
     <div class="container">
-        <header>
-            <h1><i class="fas fa-user-shield"></i> Sistema de Préstamos</h1>
-            <nav>
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <?php if (!empty($logo_path)): ?>
+                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
+                        style="height: 60px; width: auto; object-fit: contain;">
+                <?php endif; ?>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+            </div>
+            <nav style="justify-content: center;">
                 <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
                 <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
                 <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>

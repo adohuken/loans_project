@@ -2,6 +2,38 @@
 require 'auth.php';
 require 'db.php';
 
+// Fetch Settings
+$stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
+$settings = $stmt_settings->fetch();
+$company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
+$logo_path = $settings['logo_path'] ?? '';
+
+// Initialize edit_portfolio
+$edit_portfolio = null;
+
+// Handle Edit Portfolio Logic (Fetch data if edit param exists)
+if (isset($_GET['edit'])) {
+    $stmt = $pdo->prepare("SELECT * FROM portfolios WHERE id = ?");
+    $stmt->execute([$_GET['edit']]);
+    $edit_portfolio = $stmt->fetch();
+}
+
+// Handle Edit Action (POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit') {
+    $id = $_POST['id'];
+    $name = trim($_POST['name']);
+    if (!empty($name)) {
+        $stmt = $pdo->prepare("UPDATE portfolios SET name = ? WHERE id = ?");
+        try {
+            $stmt->execute([$name, $id]);
+            header("Location: portfolios.php");
+            exit;
+        } catch (PDOException $e) {
+            $error = "Error: El nombre de la cartera ya existe.";
+        }
+    }
+}
+
 // Check if user is cobrador and redirect to active_loans
 if (isset($_SESSION['role']) && $_SESSION['role'] === 'cobrador') {
     header("Location: active_loans.php");
@@ -56,14 +88,21 @@ $portfolios = $pdo->query("
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Carteras - Sistema de Préstamos</title>
     <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="mobile.css?v=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
     <div class="container">
-        <header>
-            <h1><i class="fas fa-briefcase"></i> Sistema de Préstamos</h1>
-            <nav>
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <?php if (!empty($logo_path)): ?>
+                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
+                        style="height: 60px; width: auto; object-fit: contain;">
+                <?php endif; ?>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+            </div>
+            <nav style="justify-content: center;">
                 <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
                 <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
                 <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
@@ -87,7 +126,8 @@ $portfolios = $pdo->query("
 
         <div class="grid grid-2-3">
             <div class="card">
-                <h2><i class="fas fa-plus"></i> Nueva Cartera</h2>
+                <h2><i class="fas fa-<?= $edit_portfolio ? 'edit' : 'plus' ?>"></i>
+                    <?= $edit_portfolio ? 'Editar Cartera' : 'Nueva Cartera' ?></h2>
                 <?php if (isset($error)): ?>
                     <div
                         style="background: #fee2e2; color: #b91c1c; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -95,12 +135,22 @@ $portfolios = $pdo->query("
                     </div>
                 <?php endif; ?>
                 <form method="POST">
-                    <input type="hidden" name="action" value="add">
+                    <input type="hidden" name="action" value="<?= $edit_portfolio ? 'edit' : 'add' ?>">
+                    <?php if ($edit_portfolio): ?>
+                        <input type="hidden" name="id" value="<?= $edit_portfolio['id'] ?>">
+                    <?php endif; ?>
                     <div class="form-group">
                         <label>Nombre de la Cartera</label>
-                        <input type="text" name="name" required placeholder="Ej: Ruta Norte, Cobrador Juan...">
+                        <input type="text" name="name" required
+                            value="<?= $edit_portfolio ? htmlspecialchars($edit_portfolio['name']) : '' ?>"
+                            placeholder="Ej: Ruta Norte, Cobrador Juan...">
                     </div>
-                    <button type="submit" class="btn"><i class="fas fa-save"></i> Guardar Cartera</button>
+                    <button type="submit" class="btn"><i class="fas fa-save"></i>
+                        <?= $edit_portfolio ? 'Actualizar' : 'Guardar' ?> Cartera</button>
+                    <?php if ($edit_portfolio): ?>
+                        <a href="portfolios.php" class="btn btn-secondary"
+                            style="margin-top: 0.5rem; display: inline-block; text-align: center; width: 100%; box-sizing: border-box;">Cancelar</a>
+                    <?php endif; ?>
                 </form>
             </div>
 
@@ -127,9 +177,13 @@ $portfolios = $pdo->query("
                                         </span>
                                     </td>
                                     <td>
+                                        <a href="portfolios.php?edit=<?= $portfolio['id'] ?>" class="btn"
+                                            style="background-color: #fff; color: #1e293b; border: 1px solid #cbd5e1; padding: 0.25rem 0.75rem; font-size: 0.85rem; margin-right: 0.5rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
                                         <?php if ($portfolio['client_count'] == 0): ?>
-                                            <a href="portfolios.php?delete=<?= $portfolio['id'] ?>"
-                                                class="btn btn-sm btn-secondary"
+                                            <a href="portfolios.php?delete=<?= $portfolio['id'] ?>" class="btn"
+                                                style="background-color: #fff; color: #dc2626; border: 1px solid #dc2626; padding: 0.25rem 0.75rem; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.25rem;"
                                                 onclick="return confirm('¿Seguro que deseas eliminar esta cartera?')">
                                                 <i class="fas fa-trash"></i> Eliminar
                                             </a>

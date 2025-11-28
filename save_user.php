@@ -21,7 +21,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$username, $hash, $role, $portfolio_id]);
         header("Location: users.php");
     } catch (PDOException $e) {
-        die("Error al crear usuario: " . $e->getMessage());
+        if ($e->getCode() == 23000) {
+            $error = "El nombre de usuario '$username' ya existe.";
+        } else {
+            $error = "Error al crear usuario: " . $e->getMessage();
+        }
+        header("Location: create_user.php?error=" . urlencode($error));
+        exit;
     }
 }
 ?>

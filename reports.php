@@ -95,8 +95,8 @@ if ($portfolio_filter === 'all') {
             COUNT(DISTINCT c.id) as total_clients,
             COUNT(DISTINCT l.id) as total_loans,
             COALESCE(SUM(CASE WHEN l.status = 'active' THEN 1 ELSE 0 END), 0) as active_loans,
-            COALESCE(SUM(l.amount), 0) as total_lent,
-            COALESCE(SUM(l.total_amount), 0) as total_expected,
+            COALESCE((SELECT SUM(l2.amount) FROM loans l2 WHERE l2.client_id IN (SELECT c2.id FROM clients c2 WHERE c2.portfolio_id = p.id)), 0) as total_lent,
+            COALESCE((SELECT SUM(l2.total_amount) FROM loans l2 WHERE l2.client_id IN (SELECT c2.id FROM clients c2 WHERE c2.portfolio_id = p.id)), 0) as total_expected,
             COALESCE(SUM(pay.paid_amount), 0) as total_collected,
             COALESCE(SUM(pay.paid_late_fee) + SUM(pay.late_fee), 0) as total_late_fees_registered,
             COALESCE(SUM(CASE WHEN pay.status = 'pending' THEN pay.amount_due - pay.paid_amount ELSE 0 END), 0) as pending_balance
@@ -113,8 +113,8 @@ if ($portfolio_filter === 'all') {
             COUNT(DISTINCT c.id) as total_clients,
             COUNT(DISTINCT l.id) as total_loans,
             COALESCE(SUM(CASE WHEN l.status = 'active' THEN 1 ELSE 0 END), 0) as active_loans,
-            COALESCE(SUM(l.amount), 0) as total_lent,
-            COALESCE(SUM(l.total_amount), 0) as total_expected,
+            COALESCE((SELECT SUM(l2.amount) FROM loans l2 WHERE l2.client_id IN (SELECT c2.id FROM clients c2 WHERE c2.portfolio_id IS NULL)), 0) as total_lent,
+            COALESCE((SELECT SUM(l2.total_amount) FROM loans l2 WHERE l2.client_id IN (SELECT c2.id FROM clients c2 WHERE c2.portfolio_id IS NULL)), 0) as total_expected,
             COALESCE(SUM(pay.paid_amount), 0) as total_collected,
             COALESCE(SUM(pay.paid_late_fee) + SUM(pay.late_fee), 0) as total_late_fees_registered,
             COALESCE(SUM(CASE WHEN pay.status = 'pending' THEN pay.amount_due - pay.paid_amount ELSE 0 END), 0) as pending_balance
@@ -133,8 +133,8 @@ if ($portfolio_filter === 'all') {
             COUNT(DISTINCT c.id) as total_clients,
             COUNT(DISTINCT l.id) as total_loans,
             COALESCE(SUM(CASE WHEN l.status = 'active' THEN 1 ELSE 0 END), 0) as active_loans,
-            COALESCE(SUM(l.amount), 0) as total_lent,
-            COALESCE(SUM(l.total_amount), 0) as total_expected,
+            COALESCE((SELECT SUM(l2.amount) FROM loans l2 WHERE l2.client_id IN (SELECT c2.id FROM clients c2 WHERE c2.portfolio_id = p.id)), 0) as total_lent,
+            COALESCE((SELECT SUM(l2.total_amount) FROM loans l2 WHERE l2.client_id IN (SELECT c2.id FROM clients c2 WHERE c2.portfolio_id = p.id)), 0) as total_expected,
             COALESCE(SUM(pay.paid_amount), 0) as total_collected,
             COALESCE(SUM(pay.paid_late_fee) + SUM(pay.late_fee), 0) as total_late_fees_registered,
             COALESCE(SUM(CASE WHEN pay.status = 'pending' THEN pay.amount_due - pay.paid_amount ELSE 0 END), 0) as pending_balance
@@ -154,6 +154,7 @@ $stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
 $settings = $stmt_settings->fetch();
 $currency = $settings['currency_symbol'] ?? '$';
 $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
+$logo_path = $settings['logo_path'] ?? '';
 
 ?>
 <!DOCTYPE html>
@@ -164,14 +165,21 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reportes Financieros - <?= htmlspecialchars($company_name) ?></title>
     <link rel="stylesheet" href="style.css?v=3.5">
+    <link rel="stylesheet" href="mobile.css?v=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
     <div class="container">
-        <header>
-            <h1><i class="fas fa-chart-line"></i> <?= htmlspecialchars($company_name) ?></h1>
-            <nav>
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <?php if (!empty($logo_path)): ?>
+                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
+                        style="height: 60px; width: auto; object-fit: contain;">
+                <?php endif; ?>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+            </div>
+            <nav style="justify-content: center;">
                 <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
                 <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
                 <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
@@ -199,7 +207,8 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
                 <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
                     <label>Cartera</label>
                     <select name="portfolio">
-                        <option value="all" <?= $portfolio_filter === 'all' ? 'selected' : '' ?>>Todas las Carteras</option>
+                        <option value="all" <?= $portfolio_filter === 'all' ? 'selected' : '' ?>>Todas las Carteras
+                        </option>
                         <?php foreach ($portfolios as $portfolio): ?>
                             <option value="<?= $portfolio['id'] ?>" <?= $portfolio_filter == $portfolio['id'] ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($portfolio['name']) ?>
@@ -294,13 +303,13 @@ $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
                                 <td><?= $currency ?><?= number_format($stat['total_lent'], 2) ?></td>
                                 <td><?= $currency ?><?= number_format($stat['total_expected'], 2) ?></td>
                                 <td style="color: #10b981; font-weight: bold;">
-                                    <?= $currency ?>    <?= number_format($stat['total_collected'], 2) ?>
+                                    <?= $currency ?>     <?= number_format($stat['total_collected'], 2) ?>
                                 </td>
                                 <td style="color: #8b5cf6; font-weight: bold;">
-                                    <?= $currency ?>    <?= number_format($stat['total_late_fees_registered'], 2) ?>
+                                    <?= $currency ?>     <?= number_format($stat['total_late_fees_registered'], 2) ?>
                                 </td>
                                 <td style="color: #f59e0b; font-weight: bold;">
-                                    <?= $currency ?>    <?= number_format($stat['pending_balance'], 2) ?>
+                                    <?= $currency ?>     <?= number_format($stat['pending_balance'], 2) ?>
                                 </td>
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 0.5rem;">

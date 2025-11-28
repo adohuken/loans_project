@@ -14,6 +14,9 @@ $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $company_name = $_POST['company_name'];
     $currency_symbol = $_POST['currency_symbol'];
+    $company_address = $_POST['company_address'];
+    $company_phone = $_POST['company_phone'];
+    $receipt_footer = $_POST['receipt_footer'];
 
     // Handle Logo Upload
     $logo_path = $_POST['current_logo'];
@@ -28,14 +31,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $stmt = $pdo->prepare("UPDATE settings SET company_name = ?, currency_symbol = ?, logo_path = ? WHERE id = 1");
-    $stmt->execute([$company_name, $currency_symbol, $logo_path]);
+    $stmt = $pdo->prepare("UPDATE settings SET company_name = ?, currency_symbol = ?, logo_path = ?, company_address = ?, company_phone = ?, receipt_footer = ? WHERE id = 1");
+    $stmt->execute([$company_name, $currency_symbol, $logo_path, $company_address, $company_phone, $receipt_footer]);
     $message = "Configuración actualizada correctamente.";
 }
 
 // Fetch Current Settings
 $stmt = $pdo->query("SELECT * FROM settings WHERE id = 1");
 $settings = $stmt->fetch();
+$company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
+$logo_path = $settings['logo_path'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -45,14 +50,21 @@ $settings = $stmt->fetch();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuración - Sistema de Préstamos</title>
     <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="mobile.css?v=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
     <div class="container">
-        <header>
-            <h1><i class="fas fa-cog"></i> Sistema de Préstamos</h1>
-            <nav>
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <?php if (!empty($logo_path)): ?>
+                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
+                        style="height: 60px; width: auto; object-fit: contain;">
+                <?php endif; ?>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+            </div>
+            <nav style="justify-content: center;">
                 <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
                 <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
                 <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
@@ -93,6 +105,24 @@ $settings = $stmt->fetch();
                     <label>Símbolo de Moneda</label>
                     <input type="text" name="currency_symbol"
                         value="<?= htmlspecialchars($settings['currency_symbol']) ?>" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Dirección de la Empresa</label>
+                    <input type="text" name="company_address"
+                        value="<?= htmlspecialchars($settings['company_address'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="text" name="company_phone"
+                        value="<?= htmlspecialchars($settings['company_phone'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label>Pie de Recibo (Mensaje)</label>
+                    <textarea name="receipt_footer" rows="2"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px;"><?= htmlspecialchars($settings['receipt_footer'] ?? '') ?></textarea>
                 </div>
 
                 <div class="form-group">

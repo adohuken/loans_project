@@ -2,6 +2,8 @@
 require 'auth.php';
 require 'db.php';
 
+$user_role = $_SESSION['role'] ?? 'admin';
+$user_portfolio_id = $_SESSION['portfolio_id'] ?? null;
 $client_id = $_GET['id'];
 
 // Fetch Client
@@ -40,21 +42,41 @@ foreach ($loans as $l) {
 
 <body>
     <div class="container">
-        <header>
-            <h1>Sistema de Préstamos</h1>
-            <nav>
-                <a href="index.php">Inicio</a>
-                <a href="clients.php" class="active">Clientes</a>
-                <a href="active_loans.php">Abonar</a>
-                <a href="create_loan.php">Nuevo Préstamo</a>
-                <a href="reports.php">Reportes</a>
-                <a href="portfolios.php">Carteras</a>
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
-                    <a href="users.php">Usuarios</a>
+        <header style="flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <?php if (!empty($logo_path)): ?>
+                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
+                        style="height: 60px; width: auto; object-fit: contain;">
                 <?php endif; ?>
-                <a href="settings.php">Configuración</a>
-                <a href="backup.php">Backup</a>
-                <a href="logout.php" style="color: #dc2626;">Cerrar Sesión</a>
+                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+            </div>
+            <nav style="justify-content: center;">
+                <?php if ($user_role !== 'cobrador'): ?>
+                    <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
+                <?php endif; ?>
+                <?php if ($user_role !== 'cobrador'): ?>
+                    <a href="clients.php" class="active"><i class="fas fa-users"></i> Clientes</a>
+                <?php endif; ?>
+                <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
+                <?php if ($user_role !== 'cobrador'): ?>
+                    <a href="create_loan.php"><i class="fas fa-plus-circle"></i> Nuevo Préstamo</a>
+                    <a href="reports.php"><i class="fas fa-chart-line"></i> Reportes</a>
+                    <a href="portfolios.php"><i class="fas fa-briefcase"></i> Carteras</a>
+                <?php endif; ?>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+                    <a href="users.php"><i class="fas fa-user-shield"></i> Usuarios</a>
+                <?php endif; ?>
+                <?php if ($user_role !== 'cobrador'): ?>
+                    <a href="settings.php"><i class="fas fa-cog"></i> Configuración</a>
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+                        <a href="backup.php"><i class="fas fa-database"></i> Backup</a>
+                    <?php endif; ?>
+                <?php endif; ?>
+                <span
+                    style="color: #1a202c; font-weight: 600; font-size: 0.85rem; padding: 0.5rem 0.85rem; background: #fff; border-radius: 8px;">
+                    <i class="fas fa-user"></i> <?= htmlspecialchars($_SESSION['username']) ?>
+                </span>
+                <a href="logout.php" style="color: #dc2626;"><i class="fas fa-sign-out-alt"></i> Salir</a>
             </nav>
         </header>
 
@@ -75,3 +97,4 @@ foreach ($loans as $l) {
 </body>
 
 </html>
+

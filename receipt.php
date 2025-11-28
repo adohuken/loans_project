@@ -38,6 +38,19 @@ if (!$data) {
 
 // Calculate total with late fee
 $total_paid = $data['paid_amount'] + ($data['late_fee'] ?? 0);
+// Calculate Balance History
+$stmt_history = $pdo->prepare("SELECT SUM(paid_amount) as total_paid_so_far FROM payments WHERE loan_id = ? AND id <= ?");
+$stmt_history->execute([$data['loan_id'], $payment_id]);
+$history = $stmt_history->fetch();
+$total_paid_so_far = $history['total_paid_so_far'] ?? 0;
+
+$saldo_restante = $data['loan_total'] - $total_paid_so_far;
+$saldo_inicial = $saldo_restante + $data['paid_amount'];
+
+// Ensure no negative values (just in case)
+$saldo_restante = max(0, $saldo_restante);
+$saldo_inicial = max(0, $saldo_inicial);
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -191,7 +204,12 @@ $total_paid = $data['paid_amount'] + ($data['late_fee'] ?? 0);
             <span><?= date('d/m/Y', strtotime($data['due_date'])) ?></span>
         </div>
 
+        
         <div class="row">
+            <span>Saldo Inicial:</span>
+            <span><?= $currency ?><?= number_format($saldo_inicial, 2) ?></span>
+        </div>
+<div class="row">
             <span>Monto Cuota:</span>
             <span><?= $currency ?><?= number_format($data['amount_due'], 2) ?></span>
         </div>
@@ -199,6 +217,11 @@ $total_paid = $data['paid_amount'] + ($data['late_fee'] ?? 0);
         <div class="row">
             <span>Monto Pagado:</span>
             <span><?= $currency ?><?= number_format($data['paid_amount'], 2) ?></span>
+        </div>
+
+        <div class="row">
+            <span>Saldo Restante:</span>
+            <span><?= $currency ?><?= number_format($saldo_restante, 2) ?></span>
         </div>
 
         <?php if (isset($data['late_fee']) && $data['late_fee'] > 0): ?>

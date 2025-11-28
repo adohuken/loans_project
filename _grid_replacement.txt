@@ -1,0 +1,38 @@
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <small style="color: #64748b;">Monto Prestado</small>
+                        <p style="font-weight: bold; font-size: 1.1rem;">
+                            <?= $currency ?><?= number_format($loan['amount'], 2) ?>
+                        </p>
+                    </div>
+                    <div>
+                        <small style="color: #64748b;">Total a Pagar</small>
+                        <p style="font-weight: bold; font-size:1.1rem; color: var(--primary-solid);">
+                            <?= $currency ?><?= number_format($loan['total_amount'], 2) ?>
+                        </p>
+                    </div>
+                    <div>
+                        <small style="color: #64748b;"><i class="fas fa-check-circle"></i> Total Pagado</small>
+                        <p style="font-weight: bold; font-size: 1.1rem; color: var(--success);">
+                            <?= $currency ?><?= number_format($total_paid, 2) ?>
+                        </p>
+                    </div>
+                    <div>
+                        <small style="color: #64748b;"><i class="fas fa-wallet"></i> Saldo Restante</small>
+                        <p style="font-weight: bold; font-size: 1.1rem; color: <?= ($loan['total_amount'] - $total_paid) > 0 ? '#f59e0b' : 'var(--success)' ?>;">
+                            <?= $currency ?><?= number_format($loan['total_amount'] - $total_paid, 2) ?>
+                        </p>
+                    </div>
+                    <div>
+                        <small style="color: #64748b;">Frecuencia</small>
+                        <p style="font-weight: bold; text-transform: capitalize;"><?= $loan['frequency'] ?></p>
+                    </div>
+                    <div>
+                        <small style="color: #64748b;">Estado</small>
+                        <p>
+                            <span class="badge badge-<?= $loan['status'] == 'active' ? 'pending' : 'paid' ?>">
+                                <?= strtoupper($loan['status']) ?>
+                            </span>
+                        </p>
+                    </div>
+                </div>
