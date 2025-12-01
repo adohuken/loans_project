@@ -1,0 +1,177 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Loan Status Chart (Doughnut) - Mejorado
+    const ctxStatus = document.getElementById('loanStatusChart').getContext('2d');
+
+    // Crear gradientes
+    const activeGradient = ctxStatus.createLinearGradient(0, 0, 0, 400);
+    activeGradient.addColorStop(0, '#fbbf24');
+    activeGradient.addColorStop(1, '#f59e0b');
+
+    const paidGradient = ctxStatus.createLinearGradient(0, 0, 0, 400);
+    paidGradient.addColorStop(0, '#34d399');
+    paidGradient.addColorStop(1, '#10b981');
+
+    new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+            labels: ['Activos', 'Pagados'],
+            datasets: [{
+                data: [<?= $active_loans ?>, <?= $paid_loans ?>],
+                backgroundColor: [activeGradient, paidGradient],
+                borderWidth: 0,
+                hoverOffset: 15,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        font: {
+                            size: 13,
+                            family: "'Inter', sans-serif",
+                            weight: '500'
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    cornerRadius: 8,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    callbacks: {
+                        label: function (context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            },
+            animation: {
+                animateRotate: true,
+                animateScale: true,
+                duration: 1500,
+                easing: 'easeInOutQuart'
+            }
+        }
+    });
+
+    // Income Chart (Bar) - Mejorado
+    const ctxIncome = document.getElementById('incomeChart').getContext('2d');
+
+    // Crear gradiente para las barras
+    const barGradient = ctxIncome.createLinearGradient(0, 0, 0, 400);
+    barGradient.addColorStop(0, '#818cf8');
+    barGradient.addColorStop(1, '#6366f1');
+
+    new Chart(ctxIncome, {
+        type: 'bar',
+        data: {
+            labels: <?= json_encode($months) ?>,
+            datasets: [{
+                label: 'Ingresos',
+                data: <?= json_encode($incomes) ?>,
+                backgroundColor: barGradient,
+                borderRadius: 8,
+                borderSkipped: false,
+                hoverBackgroundColor: '#4f46e5'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        font: {
+                            size: 12,
+                            family: "'Inter', sans-serif",
+                            weight: '500'
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'rect',
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    cornerRadius: 8,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    callbacks: {
+                        label: function (context) {
+                            return 'Ingresos: $' + context.parsed.y.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 11,
+                            family: "'Inter', sans-serif"
+                        },
+                        callback: function (value) {
+                            return '$' + value.toLocaleString('es-MX');
+                        },
+                        padding: 10
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 11,
+                            family: "'Inter', sans-serif"
+                        },
+                        padding: 10
+                    }
+                }
+            },
+            animation: {
+                duration: 1500,
+                easing: 'easeInOutQuart'
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
+</script>
+</body>
+
+</html>
