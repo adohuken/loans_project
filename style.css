@@ -344,7 +344,7 @@ tbody tr:last-child td:last-child {
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1.5rem;
 }
 
@@ -412,98 +412,99 @@ tbody tr:last-child td:last-child {
 
     th,
     td {
-
-        header {
-            padding: 1rem;
-            border-radius: 12px;
-            align-items: center !important;
-        }
-
-        .card {
-            padding: 1rem;
-            border-radius: 12px;
-            align-items: center !important;
-        }
-
-        h1 {
-            font-size: 1.25rem;
-        }
-
-        h2 {
-            font-size: 1.1rem;
-        }
-
-        nav {
-            justify-content: center !important;
-        }
-
-        nav a,
-        nav span {
-            padding: 0.5rem 0.75rem;
-            font-size: 0.8rem;
-        }
-
-        .btn {
-            padding: 0.65rem 1.25rem;
-            font-size: 0.85rem;
-        }
-
-        .btn-sm {
-            padding: 0.4rem 0.75rem;
-            font-size: 0.75rem;
-        }
-
-        th,
-        td {
-            padding: 0.5rem 0.35rem;
-            font-size: 0.75rem;
-        }
-
-        input[type="text"],
-        input[type="password"],
-        input[type="email"],
-        input[type="number"],
-        textarea {
-            text-align: center;
-        }
+        padding: 0.75rem;
     }
 
-    @media print {
-        body {
-            background: white;
-            padding: 0;
-        }
-
-        body::before {
-            display: none;
-        }
-
-        header,
-        .no-print {
-            display: none;
-        }
-
-        .card {
-            box-shadow: none;
-            border: 1px solid #ddd;
-            page-break-inside: avoid;
-            margin-bottom: 1rem;
-        }
-
-        .table-responsive {
-            border: none;
-            overflow: visible;
-        }
-
-        table {
-            page-break-inside: auto;
-        }
-
-        tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
-        }
+    header {
+        padding: 1rem;
+        border-radius: 12px;
+        align-items: center !important;
     }
+
+    .card {
+        padding: 1rem;
+        border-radius: 12px;
+    }
+
+    h1 {
+        font-size: 1.25rem;
+    }
+
+    h2 {
+        font-size: 1.1rem;
+    }
+
+    nav {
+        justify-content: center !important;
+    }
+
+    nav a,
+    nav span {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .btn {
+        padding: 0.65rem 1.25rem;
+        font-size: 0.85rem;
+    }
+
+    .btn-sm {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.75rem;
+    }
+
+    th,
+    td {
+        padding: 0.5rem 0.35rem;
+        font-size: 0.75rem;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="number"],
+    textarea {
+        text-align: center;
+    }
+}
+
+@media print {
+    body {
+        background: white;
+        padding: 0;
+    }
+
+    body::before {
+        display: none;
+    }
+
+    header,
+    .no-print {
+        display: none;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+        page-break-inside: avoid;
+        margin-bottom: 1rem;
+    }
+
+    .table-responsive {
+        border: none;
+        overflow: visible;
+    }
+
+    table {
+        page-break-inside: auto;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+}
 
 /* ========================================
    ESTILOS ADICIONALES PARA MÓVILES
@@ -534,7 +535,7 @@ tbody tr:last-child td:last-child {
     }
 
     /* Div del logo y nombre */
-    header > div[style*="flex"] {
+    header>div[style*="flex"] {
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
@@ -570,4 +571,3 @@ tbody tr:last-child td:last-child {
         grid-template-columns: 1fr !important;
     }
 }
-

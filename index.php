@@ -29,6 +29,7 @@ $total_invested = $pdo->query("SELECT SUM(amount) FROM loans")->fetchColumn() ?:
 $total_expected_profit = $pdo->query("SELECT SUM(total_amount - amount) FROM loans")->fetchColumn() ?: 0;
 $total_collected = $pdo->query("SELECT SUM(paid_amount) FROM payments WHERE status = 'paid'")->fetchColumn() ?: 0;
 $total_receivable = $pdo->query("SELECT SUM(amount_due) FROM payments WHERE status = 'pending'")->fetchColumn() ?: 0;
+$total_late_fees = $pdo->query("SELECT SUM(paid_late_fee) FROM payments")->fetchColumn() ?: 0;
 
 // Chart Data: Monthly Income (Last 6 Months)
 $monthly_income = $pdo->query("
@@ -58,29 +59,35 @@ $recent_loans = $pdo->query("
 
 <div class="container">
     <!-- Financial Dashboard -->
-    <div class="grid">
-        <div class="card" style="border-left: 4px solid #3b82f6;">
-            <h3 style="font-size: 0.9rem; color: #64748b;"><i class="fas fa-coins"></i> Total Invertido</h3>
-            <p style="font-size: 1.5rem; font-weight: bold; color: #1e293b;">
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+        <div class="card" style="border-left: 4px solid #3b82f6; padding: 1.25rem;">
+            <h3 style="font-size: 0.85rem; color: #64748b;"><i class="fas fa-coins"></i> Total Invertido</h3>
+            <p style="font-size: 1.25rem; font-weight: bold; color: #1e293b;">
                 <?= $currency ?><?= number_format($total_invested, 2) ?>
             </p>
         </div>
-        <div class="card" style="border-left: 4px solid #10b981;">
-            <h3 style="font-size: 0.9rem; color: #64748b;"><i class="fas fa-chart-line"></i> Ganancia Esperada</h3>
-            <p style="font-size: 1.5rem; font-weight: bold; color: #10b981;">
+        <div class="card" style="border-left: 4px solid #10b981; padding: 1.25rem;">
+            <h3 style="font-size: 0.85rem; color: #64748b;"><i class="fas fa-chart-line"></i> Ganancia Esperada</h3>
+            <p style="font-size: 1.25rem; font-weight: bold; color: #10b981;">
                 <?= $currency ?><?= number_format($total_expected_profit, 2) ?>
             </p>
         </div>
-        <div class="card" style="border-left: 4px solid #8b5cf6;">
-            <h3 style="font-size: 0.9rem; color: #64748b;"><i class="fas fa-wallet"></i> Total Recaudado</h3>
-            <p style="font-size: 1.5rem; font-weight: bold; color: #8b5cf6;">
+        <div class="card" style="border-left: 4px solid #8b5cf6; padding: 1.25rem;">
+            <h3 style="font-size: 0.85rem; color: #64748b;"><i class="fas fa-wallet"></i> Total Recaudado</h3>
+            <p style="font-size: 1.25rem; font-weight: bold; color: #8b5cf6;">
                 <?= $currency ?><?= number_format($total_collected, 2) ?>
             </p>
         </div>
-        <div class="card" style="border-left: 4px solid #f59e0b;">
-            <h3 style="font-size: 0.9rem; color: #64748b;"><i class="fas fa-hourglass-half"></i> Por Cobrar</h3>
-            <p style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;">
+        <div class="card" style="border-left: 4px solid #f59e0b; padding: 1.25rem;">
+            <h3 style="font-size: 0.85rem; color: #64748b;"><i class="fas fa-hourglass-half"></i> Por Cobrar</h3>
+            <p style="font-size: 1.25rem; font-weight: bold; color: #f59e0b;">
                 <?= $currency ?><?= number_format($total_receivable, 2) ?>
+            </p>
+        </div>
+        <div class="card" style="border-left: 4px solid #ef4444; padding: 1.25rem;">
+            <h3 style="font-size: 0.85rem; color: #64748b;"><i class="fas fa-exclamation-circle"></i> Mora Cobrada</h3>
+            <p style="font-size: 1.25rem; font-weight: bold; color: #ef4444;">
+                <?= $currency ?><?= number_format($total_late_fees, 2) ?>
             </p>
         </div>
     </div>
@@ -198,5 +205,4 @@ $recent_loans = $pdo->query("
     });
 </script>
 </body>
-
 </html>

@@ -14,85 +14,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$id]);
     $current_payment = $stmt->fetch();
 
-    if ($only_late_fee) {
-        // Only register late fee, don't mark as paid
-        $stmt = $pdo->prepare("UPDATE payments SET late_fee = late_fee + ? WHERE id = ?");
-        $stmt->execute([$late_fee, $id]);
+    try {
+        $pdo->beginTransaction();
 
-        // Redirect back to loan details
-        $loan_id = $current_payment['loan_id'];
-        header("Location: loan_details.php?id=$loan_id&late_fee_added=1");
-        exit;
-    } else {
-        // NUEVA LÓGICA: Aplicar pago primero a mora, luego a capital
-        $current_late_fee = $current_payment['late_fee'];
-        $current_paid_amount = $current_payment['paid_amount'];
-        $total_due = $current_payment['amount_due'];
+        if ($only_late_fee) {
+            // Only register late fee, don't mark as paid
+            $stmt = $pdo->prepare("UPDATE payments SET late_fee = late_fee + ? WHERE id = ?");
+            $stmt->execute([$late_fee, $id]);
 
-        // Total recibido ahora (abono + nueva mora si aplica)
-        $total_received = $amount_paid;
-        $new_late_fee = $current_late_fee + $late_fee;
+            $pdo->commit();
 
-        // Aplicar pago: primero a mora, luego a capital
-        $payment_to_late_fee = 0;
-        $payment_to_capital = 0;
+            // Redirect back to loan details
+            $loan_id = $current_payment['loan_id'];
+            header("Location: loan_details.php?id=$loan_id&late_fee_added=1");
+            exit;
+        } else {
+            // NUEVA LÓGICA: Aplicar pago primero a mora, luego a capital
+            $current_late_fee = $current_payment['late_fee'];
+            $current_paid_amount = $current_payment['paid_amount'];
+            $total_due = $current_payment['amount_due'];
 
-        if ($current_late_fee > 0) {
-            // Hay mora pendiente: aplicar primero a mora
-            if ($total_received >= $current_late_fee) {
-                // El pago cubre toda la mora
-                $payment_to_late_fee = $current_late_fee;
-                $payment_to_capital = $total_received - $current_late_fee;
-                $new_late_fee = $late_fee; // Solo queda la nueva mora agregada
+            // Total recibido ahora (abono + nueva mora si aplica)
+            $total_received = $amount_paid;
+            $new_late_fee = $current_late_fee + $late_fee;
+
+            // Aplicar pago: primero a mora, luego a capital
+            $payment_to_late_fee = 0;
+            $payment_to_capital = 0;
+
+            if ($current_late_fee > 0) {
+                // Hay mora pendiente: aplicar primero a mora
+                if ($total_received >= $current_late_fee) {
+                    // El pago cubre toda la mora
+                    $payment_to_late_fee = $current_late_fee;
+                    $payment_to_capital = $total_received - $current_late_fee;
+                    $new_late_fee = $late_fee; // Solo queda la nueva mora agregada
+                } else {
+                    // El pago NO cubre toda la mora
+                    $payment_to_late_fee = $total_received;
+                    $payment_to_capital = 0;
+                    $new_late_fee = $current_late_fee - $payment_to_late_fee + $late_fee;
+                }
             } else {
-                // El pago NO cubre toda la mora
-                $payment_to_late_fee = $total_received;
-                $payment_to_capital = 0;
-                $new_late_fee = $current_late_fee - $payment_to_late_fee + $late_fee;
+                // No hay mora pendiente: todo va a capital
+                $payment_to_capital = $total_received;
             }
-        } else {
-            // No hay mora pendiente: todo va a capital
-            $payment_to_capital = $total_received;
+
+            // Calcular nuevo monto pagado al capital
+            $new_paid_amount = $current_paid_amount + $payment_to_capital;
+
+            // Determine if payment is complete
+            if ($new_paid_amount >= $total_due && $new_late_fee == 0) {
+                // Full payment (capital completo Y sin mora)
+                $status = 'paid';
+                $paid_date = date('Y-m-d H:i:s');
+            } else {
+                // Partial payment - keep as pending
+                $status = 'pending';
+                $paid_date = $current_payment['paid_date']; // Keep existing paid_date or null
+            }
+
+            // Update payment including paid_late_fee
+            if ($status == 'paid') {
+                $stmt = $pdo->prepare("UPDATE payments SET status = ?, paid_amount = ?, late_fee = ?, paid_late_fee = paid_late_fee + ?, paid_date = ? WHERE id = ?");
+                $stmt->execute([$status, $new_paid_amount, $new_late_fee, $payment_to_late_fee, $paid_date, $id]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE payments SET paid_amount = ?, late_fee = ?, paid_late_fee = paid_late_fee + ? WHERE id = ?");
+                $stmt->execute([$new_paid_amount, $new_late_fee, $payment_to_late_fee, $id]);
+            }
+
+            // Check if all payments are done to update loan status
+            $loan_id = $current_payment['loan_id'];
+            $pending = $pdo->query("SELECT COUNT(*) FROM payments WHERE loan_id = $loan_id AND status = 'pending'")->fetchColumn();
+
+            if ($pending == 0) {
+                $pdo->exec("UPDATE loans SET status = 'paid' WHERE id = $loan_id");
+            }
+
+            $pdo->commit();
+
+            // Redirect based on payment status
+            if ($status == 'paid') {
+                header("Location: receipt.php?payment_id=$id");
+            } else {
+                header("Location: loan_details.php?id=$loan_id&partial_payment=1");
+            }
+            exit;
         }
-
-        // Calcular nuevo monto pagado al capital
-        $new_paid_amount = $current_paid_amount + $payment_to_capital;
-
-        // Determine if payment is complete
-        if ($new_paid_amount >= $total_due && $new_late_fee == 0) {
-            // Full payment (capital completo Y sin mora)
-            $status = 'paid';
-            $paid_date = date('Y-m-d H:i:s');
-        } else {
-            // Partial payment - keep as pending
-            $status = 'pending';
-            $paid_date = $current_payment['paid_date']; // Keep existing paid_date or null
-        }
-
-        // Update payment including paid_late_fee
-        if ($status == 'paid') {
-            $stmt = $pdo->prepare("UPDATE payments SET status = ?, paid_amount = ?, late_fee = ?, paid_late_fee = paid_late_fee + ?, paid_date = ? WHERE id = ?");
-            $stmt->execute([$status, $new_paid_amount, $new_late_fee, $payment_to_late_fee, $paid_date, $id]);
-        } else {
-            $stmt = $pdo->prepare("UPDATE payments SET paid_amount = ?, late_fee = ?, paid_late_fee = paid_late_fee + ? WHERE id = ?");
-            $stmt->execute([$new_paid_amount, $new_late_fee, $payment_to_late_fee, $id]);
-        }
-
-        // Check if all payments are done to update loan status
-        $loan_id = $current_payment['loan_id'];
-        $pending = $pdo->query("SELECT COUNT(*) FROM payments WHERE loan_id = $loan_id AND status = 'pending'")->fetchColumn();
-
-        if ($pending == 0) {
-            $pdo->exec("UPDATE loans SET status = 'paid' WHERE id = $loan_id");
-        }
-
-        // Redirect based on payment status
-        if ($status == 'paid') {
-            header("Location: receipt.php?payment_id=$id");
-        } else {
-            header("Location: loan_details.php?id=$loan_id&partial_payment=1");
-        }
-        exit;
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        die("Error al procesar el pago: " . $e->getMessage());
     }
 }
 

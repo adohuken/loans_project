@@ -298,7 +298,135 @@ require 'components/enhanced_header.php';
             </table>
         </div>
     </div>
+    <!-- Detailed Transaction Report (Hoja de Datos) -->
+    <?php
+    // 6. Detailed Transaction Report
+    if ($portfolio_filter === 'all') {
+        $stmt = $pdo->prepare("
+            SELECT 
+                p.paid_date,
+                c.name as client_name,
+                COALESCE(port.name, 'Sin Asignar') as portfolio_name,
+                l.id as loan_id,
+                p.paid_amount,
+                p.paid_late_fee,
+                (p.paid_amount + p.paid_late_fee) as total_transaction
+            FROM payments p
+            JOIN loans l ON p.loan_id = l.id
+            JOIN clients c ON l.client_id = c.id
+            LEFT JOIN portfolios port ON c.portfolio_id = port.id
+            WHERE p.status = 'paid' 
+            AND p.paid_date BETWEEN ? AND ?
+            ORDER BY p.paid_date DESC
+        ");
+        $stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59']);
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT 
+                p.paid_date,
+                c.name as client_name,
+                COALESCE(port.name, 'Sin Asignar') as portfolio_name,
+                l.id as loan_id,
+                p.paid_amount,
+                p.paid_late_fee,
+                (p.paid_amount + p.paid_late_fee) as total_transaction
+            FROM payments p
+            JOIN loans l ON p.loan_id = l.id
+            JOIN clients c ON l.client_id = c.id
+            LEFT JOIN portfolios port ON c.portfolio_id = port.id
+            WHERE p.status = 'paid' 
+            AND p.paid_date BETWEEN ? AND ?
+            AND c.portfolio_id = ?
+            ORDER BY p.paid_date DESC
+        ");
+        $stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59', $portfolio_filter]);
+    }
+    $transactions = $stmt->fetchAll();
+    ?>
+
+    <div class="card" style="margin-top: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div>
+                <h2><i class="fas fa-table"></i> Hoja de Datos Detallada</h2>
+                <p style="color: #64748b; margin: 0;">Registro detallado de movimientos en el periodo</p>
+            </div>
+            <button onclick="exportTableToCSV('reporte_movimientos.csv')" class="btn btn-sm btn-secondary">
+                <i class="fas fa-file-csv"></i> Exportar CSV
+            </button>
+        </div>
+
+        <div class="table-responsive">
+            <table id="transactionsTable">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Cartera</th>
+                        <th>Préstamo</th>
+                        <th>Abono Capital/Int.</th>
+                        <th>Mora Pagada</th>
+                        <th>Total Recibido</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($transactions as $t): ?>
+                        <tr>
+                            <td><?= date('d/m/Y H:i', strtotime($t['paid_date'])) ?></td>
+                            <td><?= htmlspecialchars($t['client_name']) ?></td>
+                            <td><span class="badge"
+                                    style="background: #e2e8f0; color: #475569;"><?= htmlspecialchars($t['portfolio_name']) ?></span>
+                            </td>
+                            <td>#<?= $t['loan_id'] ?></td>
+                            <td><?= $currency ?><?= number_format($t['paid_amount'], 2) ?></td>
+                            <td><?= $currency ?><?= number_format($t['paid_late_fee'], 2) ?></td>
+                            <td style="font-weight: bold; color: #10b981;">
+                                <?= $currency ?>    <?= number_format($t['total_transaction'], 2) ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($transactions)): ?>
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 2rem; color: #64748b;">
+                                No hay movimientos registrados en este periodo
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
+<script>
+    function exportTableToCSV(filename) {
+        var csv = [];
+        var rows = document.querySelectorAll("#transactionsTable tr");
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = [], cols = rows[i].querySelectorAll("td, th");
+
+            for (var j = 0; j < cols.length; j++)
+                row.push('"' + cols[j].innerText.replace(/"/g, '""') + '"');
+
+            csv.push(row.join(","));
+        }
+
+        downloadCSV(csv.join("\n"), filename);
+    }
+
+    function downloadCSV(csv, filename) {
+        var csvFile;
+        var downloadLink;
+
+        csvFile = new Blob([csv], { type: "text/csv" });
+        downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+    }
+</script>
 </body>
 
 </html>
