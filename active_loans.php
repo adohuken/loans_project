@@ -46,152 +46,104 @@ if ($user_role === 'cobrador') {
     $loans = $stmt->fetchAll();
     $portfolio_name = null;
 }
+
+// Include enhanced header
+require 'components/enhanced_header.php';
 ?>
-<!DOCTYPE html>
-<html lang="es">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Abonar (Créditos Activos) - Sistema de Préstamos</title>
-    <link rel="stylesheet" href="style.css?v=3.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-
-<body>
-    <div class="container">
-        <header style="flex-direction: column; gap: 1.5rem;">
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
-                <?php if (!empty($logo_path)): ?>
-                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
-                        style="height: 60px; width: auto; object-fit: contain;">
-                <?php endif; ?>
-                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+<div class="container">
+    <div class="card">
+        <h2><i class="fas fa-list-ul"></i> Créditos Activos (Abonar)</h2>
+        <?php if ($portfolio_name): ?>
+            <div
+                style="background: #e0e7ff; border: 1px solid #c7d2fe; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
+                <strong style="color: #4338ca;"><i class="fas fa-folder-open"></i> Cartera:
+                    <?= htmlspecialchars($portfolio_name) ?></strong>
             </div>
-            <nav style="justify-content: center;">
-                <?php if ($user_role !== 'cobrador'): ?>
-                    <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
-                <?php endif; ?>
-                <?php if ($user_role !== 'cobrador'): ?>
-                    <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
-                <?php endif; ?>
-                <a href="active_loans.php" class="active"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
-                <?php if ($user_role !== 'cobrador'): ?>
-                    <a href="create_loan.php"><i class="fas fa-plus-circle"></i> Nuevo Préstamo</a>
-                <?php endif; ?>
-                <?php if ($user_role !== 'cobrador'): ?>
-                    <a href="reports.php"><i class="fas fa-chart-line"></i> Reportes</a>
-                    <a href="portfolios.php"><i class="fas fa-briefcase"></i> Carteras</a>
-                <?php endif; ?>
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
-                    <a href="users.php"><i class="fas fa-user-shield"></i> Usuarios</a>
-                <?php endif; ?>
-                <?php if ($user_role !== 'cobrador'): ?>
-                    <a href="settings.php"><i class="fas fa-cog"></i> Configuración</a>
-                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
-                        <a href="backup.php"><i class="fas fa-database"></i> Backup</a>
-                    <?php endif; ?>
-                <?php endif; ?>
-                <span
-                    style="color: #1a202c; font-weight: 600; font-size: 0.85rem; padding: 0.5rem 0.85rem; background: #fff; border-radius: 8px;">
-                    <i class="fas fa-user"></i> <?= htmlspecialchars($_SESSION['username']) ?>
-                </span>
-                <a href="logout.php" style="color: #dc2626;"><i class="fas fa-sign-out-alt"></i> Salir</a>
-            </nav>
-        </header>
-
-        <div class="card">
-            <h2><i class="fas fa-list-ul"></i> Créditos Activos (Abonar)</h2>
-            <?php if ($portfolio_name): ?>
-                <div
-                    style="background: #e0e7ff; border: 1px solid #c7d2fe; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <strong style="color: #4338ca;"><i class="fas fa-folder-open"></i> Cartera:
-                        <?= htmlspecialchars($portfolio_name) ?></strong>
-                </div>
-            <?php endif; ?>
-            <p style="color: #64748b; margin-bottom: 1rem;">Selecciona un préstamo para registrar un pago.</p>
-            <div style="margin-bottom: 1rem;">
-                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Buscar por cliente..."
-                    style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem;">
-            </div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
+        <?php endif; ?>
+        <p style="color: #64748b; margin-bottom: 1rem;">Selecciona un préstamo para registrar un pago.</p>
+        <div style="margin-bottom: 1rem;">
+            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Buscar por cliente..."
+                style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem;">
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <?php if ($user_role !== 'cobrador'): ?>
+                            <th>Cartera</th>
+                        <?php endif; ?>
+                        <th>Monto Total</th>
+                        <th>Fecha Inicio</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($loans as $loan): ?>
                         <tr>
-                            <th>ID</th>
-                            <th>Cliente</th>
+                            <td>#<?= $loan['id'] ?></td>
+                            <td>
+                                <strong><i class="fas fa-user"></i> <?= htmlspecialchars($loan['name']) ?></strong><br>
+                                <small><?= htmlspecialchars($loan['cedula'] ?? '') ?></small>
+                            </td>
                             <?php if ($user_role !== 'cobrador'): ?>
-                                <th>Cartera</th>
-                            <?php endif; ?>
-                            <th>Monto Total</th>
-                            <th>Fecha Inicio</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($loans as $loan): ?>
-                            <tr>
-                                <td>#<?= $loan['id'] ?></td>
                                 <td>
-                                    <strong><i class="fas fa-user"></i> <?= htmlspecialchars($loan['name']) ?></strong><br>
-                                    <small><?= htmlspecialchars($loan['cedula'] ?? '') ?></small>
-                                </td>
-                                <?php if ($user_role !== 'cobrador'): ?>
-                                    <td>
-                                        <?php if ($loan['portfolio_name']): ?>
-                                            <span class="badge" style="background-color: #e0e7ff; color: #4338ca;">
-                                                <i class="fas fa-folder"></i> <?= htmlspecialchars($loan['portfolio_name']) ?>
-                                            </span>
-                                        <?php else: ?>
-                                            <span style="color: #9ca3af;">Sin Asignar</span>
-                                        <?php endif; ?>
-                                    </td>
-                                <?php endif; ?>
-                                <td>$<?= number_format($loan['total_amount'], 2) ?></td>
-                                <td><?= $loan['start_date'] ?></td>
-                                <td>
-                                    <a href="loan_details.php?id=<?= $loan['id'] ?>" class="btn btn-sm">
-                                        <i class="fas fa-money-bill-wave"></i> Abonar / Ver Detalles
-                                    </a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <?php if (empty($loans)): ?>
-                            <tr>
-                                <td colspan="<?= $user_role !== 'cobrador' ? '6' : '5' ?>"
-                                    style="text-align: center; padding: 2rem;">
-                                    <?php if ($portfolio_name): ?>
-                                        No hay créditos activos en la cartera "<?= htmlspecialchars($portfolio_name) ?>".
+                                    <?php if ($loan['portfolio_name']): ?>
+                                        <span class="badge" style="background-color: #e0e7ff; color: #4338ca;">
+                                            <i class="fas fa-folder"></i> <?= htmlspecialchars($loan['portfolio_name']) ?>
+                                        </span>
                                     <?php else: ?>
-                                        No hay créditos activos en este momento.
+                                        <span style="color: #9ca3af;">Sin Asignar</span>
                                     <?php endif; ?>
                                 </td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+                            <?php endif; ?>
+                            <td>$<?= number_format($loan['total_amount'], 2) ?></td>
+                            <td><?= $loan['start_date'] ?></td>
+                            <td>
+                                <a href="loan_details.php?id=<?= $loan['id'] ?>" class="btn btn-sm">
+                                    <i class="fas fa-money-bill-wave"></i> Abonar / Ver Detalles
+                                </a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($loans)): ?>
+                        <tr>
+                            <td colspan="<?= $user_role !== 'cobrador' ? '6' : '5' ?>"
+                                style="text-align: center; padding: 2rem;">
+                                <?php if ($portfolio_name): ?>
+                                    No hay créditos activos en la cartera "<?= htmlspecialchars($portfolio_name) ?>".
+                                <?php else: ?>
+                                    No hay créditos activos en este momento.
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
+</div>
 <script>
-function filterTable() {
-  var input, filter, table, tr, td, i, txtValue;
-  input = document.getElementById("searchInput");
-  filter = input.value.toUpperCase();
-  table = document.querySelector("table");
-  tr = table.getElementsByTagName("tr");
-  for (i = 1; i < tr.length; i++) {
-    td = tr[i].getElementsByTagName("td")[1]; // Columna Cliente
-    if (td) {
-      txtValue = td.textContent || td.innerText;
-      if (txtValue.toUpperCase().indexOf(filter) > -1) {
-        tr[i].style.display = "";
-      } else {
-        tr[i].style.display = "none";
-      }
-    }       
-  }
-}
+    function filterTable() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("searchInput");
+        filter = input.value.toUpperCase();
+        table = document.querySelector("table");
+        tr = table.getElementsByTagName("tr");
+        for (i = 1; i < tr.length; i++) {
+            td = tr[i].getElementsByTagName("td")[1]; // Columna Cliente
+            if (td) {
+                txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
 </script>
 </body>
 

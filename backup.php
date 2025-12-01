@@ -7,6 +7,7 @@ $stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
 $settings = $stmt_settings->fetch();
 $company_name = $settings['company_name'] ?? 'Sistema de Préstamos';
 $logo_path = $settings['logo_path'] ?? '';
+$user_role = $_SESSION['role'] ?? 'admin';
 
 // 🔒 SECURITY CHECK: Only SuperAdmin can access backup
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
@@ -92,86 +93,155 @@ if (isset($_POST['restore'])) {
         $message = "Error al subir el archivo.";
     }
 }
+
+// Include enhanced header
+require 'components/enhanced_header.php';
 ?>
-<!DOCTYPE html>
-<html lang="es">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Backup y Restauración</title>
-    <link rel="stylesheet" href="style.css?v=3.0">
-    <link rel="stylesheet" href="mobile.css?v=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
+<style>
+    .backup-section {
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        background: var(--bg-secondary);
+        transition: all 0.3s ease;
+    }
 
-<body>
-    <div class="container">
-        <header style="flex-direction: column; gap: 1.5rem;">
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
-                <?php if (!empty($logo_path)): ?>
-                    <img src="<?= htmlspecialchars($logo_path) ?>" alt="Logo"
-                        style="height: 60px; width: auto; object-fit: contain;">
-                <?php endif; ?>
-                <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($company_name) ?></h1>
+    .backup-section:hover {
+        border-color: var(--accent-primary);
+        box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    .section-title {
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .section-desc {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+    }
+
+    .file-input-wrapper {
+        margin-bottom: 1rem;
+    }
+
+    input[type="file"] {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        padding: 0.75rem;
+        border-radius: 8px;
+        width: 100%;
+        cursor: pointer;
+    }
+
+    input[type="file"]::file-selector-button {
+        background: var(--accent-lighter);
+        color: var(--accent-primary);
+        border: 1px solid var(--accent-primary);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-right: 1rem;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    input[type="file"]::file-selector-button:hover {
+        background: var(--accent-primary);
+        color: white;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+</style>
+
+<div class="container">
+    <div class="card">
+        <h2 style="color: var(--text-primary); margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem;">
+            <i class="fas fa-database" style="color: var(--accent-primary);"></i> Backup y Restauración
+        </h2>
+
+        <?php if ($message): ?>
+            <div
+                style="background: var(--accent-light); color: var(--accent-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--accent-primary); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-check-circle"></i> <?= $message ?>
             </div>
-            <nav style="justify-content: center;">
-                <a href="index.php"><i class="fas fa-home"></i> Inicio</a>
-                <a href="clients.php"><i class="fas fa-users"></i> Clientes</a>
-                <a href="active_loans.php"><i class="fas fa-hand-holding-usd"></i> Abonar</a>
-                <a href="create_loan.php"><i class="fas fa-plus-circle"></i> Nuevo Préstamo</a>
-                <a href="reports.php"><i class="fas fa-chart-line"></i> Reportes</a>
-                <a href="portfolios.php"><i class="fas fa-briefcase"></i> Carteras</a>
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
-                    <a href="users.php"><i class="fas fa-user-shield"></i> Usuarios</a>
-                <?php endif; ?>
-                <a href="settings.php"><i class="fas fa-cog"></i> Configuración</a>
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
-                    <a href="backup.php" class="active"><i class="fas fa-database"></i> Backup</a>
-                <?php endif; ?>
-                <span
-                    style="color: #1a202c; font-weight: 600; font-size: 0.85rem; padding: 0.5rem 0.85rem; background: #fff; border-radius: 8px;">
-                    <i class="fas fa-user"></i> <?= htmlspecialchars($_SESSION['username']) ?>
-                </span>
-                <a href="logout.php" style="color: #dc2626;"><i class="fas fa-sign-out-alt"></i> Salir</a>
-            </nav>
-        </header>
+        <?php endif; ?>
 
-        <div class="card">
-            <h2><i class="fas fa-database"></i> Backup y Restauración</h2>
-            <?php if ($message): ?>
-                <div style="background: #d1fae5; color: #065f46; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <i class="fas fa-check-circle"></i> <?= $message ?>
-                </div>
-            <?php endif; ?>
+        <div class="grid"
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+            <!-- Backup Section -->
+            <div class="backup-section">
+                <h3 class="section-title"><i class="fas fa-download"></i> Crear Copia de Seguridad</h3>
+                <p class="section-desc">Descarga una copia completa de la base de datos en formato SQL para resguardar
+                    tu información.</p>
+                <form method="POST">
+                    <button type="submit" name="backup" class="btn-primary">
+                        <i class="fas fa-download"></i> Descargar Backup SQL
+                    </button>
+                </form>
+            </div>
 
-            <div class="grid">
-                <div style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px;">
-                    <h3><i class="fas fa-download"></i> Crear Copia de Seguridad</h3>
-                    <p style="color: #64748b; margin-bottom: 1rem;">Descarga una copia completa de la base de datos.</p>
-                    <form method="POST">
-                        <button type="submit" name="backup" class="btn">
-                            <i class="fas fa-download"></i> Descargar Backup SQL
-                        </button>
-                    </form>
-                </div>
-
-                <div style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px;">
-                    <h3><i class="fas fa-upload"></i> Restaurar Base de Datos</h3>
-                    <p style="color: #64748b; margin-bottom: 1rem;">Sube un archivo .sql para restaurar el sistema.</p>
-                    <form method="POST" enctype="multipart/form-data">
-                        <div class="form-group">
-                            <input type="file" name="backup_file" accept=".sql" required style="padding: 0.5rem;">
-                        </div>
-                        <button type="submit" name="restore" class="btn btn-secondary"
-                            onclick="return confirm('⚠️ ¡ADVERTENCIA! Esto borrará todos los datos actuales y los reemplazará con el backup. ¿Estás seguro?')">
-                            <i class="fas fa-trash-restore"></i> Restaurar Sistema
-                        </button>
-                    </form>
-                </div>
+            <!-- Restore Section -->
+            <div class="backup-section">
+                <h3 class="section-title"><i class="fas fa-upload"></i> Restaurar Base de Datos</h3>
+                <p class="section-desc">Sube un archivo .sql previamente descargado para restaurar el sistema al estado
+                    de esa copia.</p>
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="file-input-wrapper">
+                        <input type="file" name="backup_file" accept=".sql" required>
+                    </div>
+                    <button type="submit" name="restore" class="btn-danger"
+                        onclick="return confirm('⚠️ ¡ADVERTENCIA CRÍTICA!\n\nEsta acción BORRARÁ TODOS los datos actuales y los reemplazará con los del archivo de respaldo.\n\n¿Estás absolutamente seguro de continuar?')">
+                        <i class="fas fa-trash-restore"></i> Restaurar Sistema
+                    </button>
+                </form>
             </div>
         </div>
     </div>
+</div>
 </body>
 
 </html>
