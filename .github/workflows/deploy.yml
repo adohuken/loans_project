@@ -23,3 +23,4 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         server-dir: htdocs/
         dangerous-clean-slate: false
+        # Trigger run to verify secrets
