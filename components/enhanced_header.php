@@ -18,6 +18,7 @@ $logo_path = $logo_path ?? '';
     <link rel="stylesheet" href="style.css?v=3.0">
     <link rel="stylesheet" href="assets/css/themes.css?v=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         // Apply theme immediately to prevent flash
         (function () {
@@ -117,10 +118,17 @@ $logo_path = $logo_path ?? '';
                 <a href="clients.php" class="<?= $current_page === 'clients' ? 'active' : '' ?>">
                     <i class="fas fa-users"></i> Clientes
                 </a>
+                <a href="search_history.php" class="<?= $current_page === 'search_history' ? 'active' : '' ?>">
+                    <i class="fas fa-history"></i> Historial
+                </a>
             <?php endif; ?>
 
             <a href="active_loans.php" class="<?= $current_page === 'active_loans' ? 'active' : '' ?>">
                 <i class="fas fa-hand-holding-usd"></i> Abonar
+            </a>
+
+            <a href="rent_receipts.php" class="<?= $current_page === 'rent_receipts' || $current_page === 'create_rent_receipt' || $current_page === 'view_rent_receipt' ? 'active' : '' ?>">
+                <i class="fas fa-file-invoice"></i> Renta
             </a>
 
             <?php if ($user_role !== 'cobrador'): ?>
@@ -162,16 +170,22 @@ $logo_path = $logo_path ?? '';
     <div id="notification-panel"
         style="display: none; position: fixed; top: 80px; right: 20px; width: 400px; max-width: 90vw; background: var(--bg-primary); border-radius: 16px; box-shadow: 0 20px 40px -10px var(--shadow); z-index: 9998; max-height: 500px; overflow-y: auto; border: 2px solid var(--border-color);">
         <div
-            style="padding: 1.5rem; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0; font-weight: 800; color: var(--text-primary);">
-                <i class="fas fa-bell"></i> Notificaciones
+            style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary);">
+            <h3 style="margin: 0; font-weight: 800; color: var(--text-primary); font-size: 1.1rem;">
+                <i class="fas fa-bell" style="color: var(--primary-color);"></i> Notificaciones
             </h3>
-            <button onclick="toggleNotifications()"
-                style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem;">
-                <i class="fas fa-times"></i>
-            </button>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <button onclick="markAllRead()"
+                    style="background: none; border: none; color: var(--primary-color); font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+                    Marcar todo leído
+                </button>
+                <button onclick="toggleNotifications()"
+                    style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
-        <div id="notification-list" style="padding: 1rem;">
+        <div id="notification-list" style="padding: 0;">
             <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                 <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
                 <p>Cargando notificaciones...</p>
@@ -196,6 +210,24 @@ $logo_path = $logo_path ?? '';
             }
         }
 
+        // Mark all as read
+        async function markAllRead() {
+            try {
+                await fetch('mark_notification_read.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ all: true })
+                });
+                loadNotificationPanel(); // Reload to update UI
+                // Update global badge via NotificationManager if available
+                if (window.notificationManager) {
+                    window.notificationManager.loadNotifications();
+                }
+            } catch (error) {
+                console.error('Error marking all read:', error);
+            }
+        }
+
         // Load notifications into panel
         async function loadNotificationPanel() {
             const list = document.getElementById('notification-list');
@@ -205,31 +237,35 @@ $logo_path = $logo_path ?? '';
 
                 if (data.notifications.length === 0) {
                     list.innerHTML = `
-                        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                            <i class="fas fa-check-circle" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
-                            <p>No hay notificaciones nuevas</p>
+                        <div style="text-align: center; padding: 3rem 2rem; color: var(--text-secondary);">
+                            <i class="fas fa-check-circle" style="font-size: 3rem; opacity: 0.2; margin-bottom: 1rem;"></i>
+                            <p style="margin: 0;">No tienes notificaciones nuevas</p>
                         </div>
                     `;
                     return;
                 }
 
                 list.innerHTML = data.notifications.map(n => `
-                    <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); ${n.is_read ? 'opacity: 0.7;' : 'background: var(--bg-secondary);'}">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                            <strong style="color: var(--text-primary);">${n.title}</strong>
-                            <small style="color: var(--text-secondary);">${n.created_at}</small>
+                    <div style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); transition: background 0.2s; ${n.read ? 'opacity: 0.6;' : 'background: var(--primary-surface); border-left: 4px solid var(--primary-color);'}" 
+                         onmouseover="this.style.background='var(--bg-secondary)'" 
+                         onmouseout="this.style.background='${n.read ? 'transparent' : 'var(--primary-surface)'}'">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                            <strong style="color: var(--text-primary); font-size: 0.95rem;">${n.title}</strong>
+                            <small style="color: var(--text-secondary); font-size: 0.75rem;">${formatDate(n.date)}</small>
                         </div>
-                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">${n.message}</p>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.4;">${n.message}</p>
                     </div>
                 `).join('');
 
                 // Update badge
                 const badge = document.getElementById('notification-badge');
-                if (data.unread_count > 0) {
-                    badge.style.display = 'flex';
-                    badge.innerText = data.unread_count;
-                } else {
-                    badge.style.display = 'none';
+                if (badge) {
+                    if (data.unread_count > 0) {
+                        badge.style.display = 'flex';
+                        badge.innerText = data.unread_count > 99 ? '99+' : data.unread_count;
+                    } else {
+                        badge.style.display = 'none';
+                    }
                 }
 
             } catch (error) {
@@ -245,19 +281,40 @@ $logo_path = $logo_path ?? '';
 
         // Check for notifications periodically
         setInterval(() => {
-            const badge = document.getElementById('notification-badge');
+            // Update badge quietly in background
             fetch('get_notifications.php')
                 .then(r => r.json())
                 .then(data => {
-                    if (data.unread_count > 0) {
-                        badge.style.display = 'flex';
-                        badge.innerText = data.unread_count;
-                    } else {
-                        badge.style.display = 'none';
+                    const badge = document.getElementById('notification-badge');
+                    if (badge) {
+                        if (data.unread_count > 0) {
+                            badge.style.display = 'flex';
+                            badge.innerText = data.unread_count > 99 ? '99+' : data.unread_count;
+                        } else {
+                            badge.style.display = 'none';
+                        }
                     }
                 })
-                .catch(console.error);
-        }, 60000);
+                .catch(e => console.error('Error polling notifications:', e));
+        }, 30000);
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString + 'T00:00:00'); // append time to avoid timezone issues
+            return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        // Close panel when clicking outside
+        document.addEventListener('click', function (event) {
+            const panel = document.getElementById('notification-panel');
+            const toggleBtn = document.querySelector('button[onclick="toggleNotifications()"]');
+
+            if (panel.style.display === 'block' &&
+                !panel.contains(event.target) &&
+                !toggleBtn.contains(event.target)) {
+                panel.style.display = 'none';
+            }
+        });
     </script>
 </body>
 
