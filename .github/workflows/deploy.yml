@@ -20,3 +20,4 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: htdocs/
           dangerous-clean-slate: false
+          # Last attempt with updated credentials
