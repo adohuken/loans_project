@@ -75,16 +75,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Return HTML Table
-    echo '<div style="background: #fff; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">';
-    echo '<h4 style="margin-top: 0; color: #334155;">Tabla de Amortización Preliminar</h4>';
+    echo '<div style="background: var(--bg-primary); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">';
+    echo '<h4 style="margin-top: 0; color: var(--text-primary);">Tabla de Amortización Preliminar</h4>';
     echo '<div class="table-responsive" style="max-height: 300px; overflow-y: auto;">';
     echo '<table style="width: 100%; border-collapse: collapse;">';
-    echo '<thead style="background: #f1f5f9; position: sticky; top: 0;">';
+    echo '<thead style="background: var(--bg-tertiary); position: sticky; top: 0;">';
     echo '<tr><th style="padding: 0.5rem; text-align: left;">#</th><th style="padding: 0.5rem; text-align: left;">Fecha</th><th style="padding: 0.5rem; text-align: left;">Monto</th></tr>';
     echo '</thead>';
     echo '<tbody>';
     foreach ($schedule as $payment) {
-        echo '<tr style="border-bottom: 1px solid #f1f5f9;">';
+        echo '<tr style="border-bottom: 1px solid var(--border-color); color: var(--text-primary);">';
         echo '<td style="padding: 0.5rem;">' . $payment['number'] . '</td>';
         echo '<td style="padding: 0.5rem;">' . date('d/m/Y', strtotime($payment['date'])) . '</td>';
         echo '<td style="padding: 0.5rem;">$' . number_format($payment['amount'], 2) . '</td>';

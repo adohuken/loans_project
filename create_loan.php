@@ -49,8 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $interest_amount = $amount * ($interest_rate / 100) * $months; // Interés mensual × meses
         $total_amount = $amount + $interest_amount;
 
-        // Calculate Installment Amount
-        $installment_amount = $total_amount / $duration;
+        // Calculate Installment Amount — rounded to 2 decimals
+        $installment_amount = round($total_amount / $duration, 2);
+
+        // Calculate rounding difference to add to the last payment
+        $sum_of_installments = $installment_amount * $duration;
+        $rounding_diff = round($total_amount - $sum_of_installments, 2);
 
         // Insert Loan
         $stmt = $pdo->prepare("INSERT INTO loans (client_id, amount, interest_rate, frequency, duration_months, start_date, total_amount, portfolio_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')");
@@ -96,12 +100,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $due_date = $current_date->format('Y-m-d');
 
+            // Last payment absorbs the rounding difference so SUM(amount_due) == total_amount exactly
+            $cuota = ($i === $duration) ? round($installment_amount + $rounding_diff, 2) : $installment_amount;
+
             $stmt_payment = $pdo->prepare("INSERT INTO payments (loan_id, due_date, amount_due, status) VALUES (?, ?, ?, 'pending')");
-            $stmt_payment->execute([$loan_id, $due_date, $installment_amount]);
+            $stmt_payment->execute([$loan_id, $due_date, $cuota]);
         }
 
         $pdo->commit();
-        header("Location: active_loans.php");
+        header("Location: loan_details.php?id=$loan_id");
         exit;
 
     } catch (Exception $e) {
@@ -114,97 +121,316 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 require 'components/enhanced_header.php';
 ?>
 
+<style>
+    body {
+        background-color: var(--bg-secondary);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: var(--text-primary);
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .main-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+        align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+        .main-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Cards */
+    .card {
+        background: var(--primary-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+        padding: 2rem;
+    }
+
+    .card h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    /* Forms */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-help {
+        display: block;
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    /* Summary Card */
+    .summary-card {
+        background: var(--secondary-surface);
+        padding: 2rem;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color);
+        position: sticky;
+        top: 2rem;
+    }
+
+    .summary-title {
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        font-size: 1.25rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .summary-row:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .summary-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .summary-value {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+    }
+
+    .total-value {
+        color: var(--primary-color);
+        font-size: 1.5rem;
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 1rem;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        margin-top: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+    }
+
+    .btn-submit:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+    }
+
+    .btn-preview {
+        width: 100%;
+        padding: 0.75rem;
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 1rem;
+        transition: all 0.2s;
+    }
+
+    .btn-preview:hover {
+        background: #f1f5f9;
+        color: var(--text-primary);
+    }
+</style>
+
 <div class="container">
-    <div class="card" style="max-width: 800px; margin: 0 auto;">
-        <h2><i class="fas fa-file-contract"></i> Crear Nuevo Préstamo</h2>
-        <form method="POST">
-            <div class="grid">
+    <form method="POST">
+        <div class="main-grid">
+
+            <!-- Left Column: Form Inputs -->
+            <div class="card">
+                <h2><i class="fas fa-file-contract" style="color: var(--primary-color);"></i> Crear Nuevo Préstamo</h2>
+
                 <div class="form-group">
                     <label>Cliente</label>
-                    <select name="client_id" required>
+                    <select name="client_id" class="form-control" required>
                         <option value="">-- Seleccionar Cliente --</option>
                         <?php foreach ($clients as $client): ?>
                             <option value="<?= $client['id'] ?>"><?= htmlspecialchars($client['name']) ?>
                                 (<?= htmlspecialchars($client['cedula'] ?? 'N/A') ?>)</option>
                         <?php endforeach; ?>
                     </select>
-                    <small><a href="clients.php" style="color: var(--primary-solid); text-decoration: none;"><i
-                                class="fas fa-user-plus"></i> ¿Cliente nuevo? Regístralo aquí</a></small>
+                    <small class="form-help">
+                        <a href="clients.php"
+                            style="color: var(--primary-color); text-decoration: none; font-weight: 500;">
+                            <i class="fas fa-user-plus"></i> ¿Cliente nuevo? Regístralo aquí
+                        </a>
+                    </small>
                 </div>
 
-                <div class="form-group">
-                    <label>Cartera</label>
-                    <select name="portfolio_id">
-                        <option value="">-- Sin Cartera --</option>
-                        <?php foreach ($portfolios as $portfolio): ?>
-                            <option value="<?= $portfolio['id'] ?>"><?= htmlspecialchars($portfolio['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Monto a Prestar</label>
+                        <div style="position: relative;">
+                            <span
+                                style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-weight: 600;">$</span>
+                            <input type="number" step="0.01" name="amount" id="amount" class="form-control"
+                                style="padding-left: 2.5rem;" required oninput="calculateTotal()" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tasa de Interés (% Mensual)</label>
+                        <div style="position: relative;">
+                            <input type="number" step="0.01" name="interest_rate" id="interest_rate"
+                                class="form-control" required oninput="calculateTotal()" placeholder="Ej: 15"
+                                value="<?= $default_interest ?>">
+                            <span
+                                style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-weight: 600;">%</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Monto a Prestar</label>
-                    <input type="number" step="0.01" name="amount" id="amount" required oninput="calculateTotal()">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Frecuencia de Pago</label>
+                        <select name="payment_frequency" id="payment_frequency" class="form-control" required
+                            onchange="calculateTotal()">
+                            <option value="daily">Diario</option>
+                            <option value="weekly">Semanal</option>
+                            <option value="biweekly">Quincenal</option>
+                            <option value="monthly">Mensual</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Plazo (Meses)</label>
+                        <input type="number" name="months" id="months" class="form-control" required min="1"
+                            oninput="calculateTotal()" placeholder="Ej: 12">
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Tasa de Interés (% Mensual)</label>
-                    <input type="number" step="0.01" name="interest_rate" id="interest_rate" required
-                        oninput="calculateTotal()">
-                    <small style="color: #64748b;">Interés mensual que se multiplica por el plazo.</small>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Fecha de Inicio</label>
+                        <input type="date" name="start_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cartera (Opcional)</label>
+                        <select name="portfolio_id" class="form-control">
+                            <option value="">-- Sin Cartera --</option>
+                            <?php foreach ($portfolios as $portfolio): ?>
+                                <option value="<?= $portfolio['id'] ?>"><?= htmlspecialchars($portfolio['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Frecuencia de Pago</label>
-                    <select name="payment_frequency" id="payment_frequency" required onchange="calculateTotal()">
-                        <option value="daily">Diario</option>
-                        <option value="weekly">Semanal</option>
-                        <option value="biweekly">Quincenal</option>
-                        <option value="monthly">Mensual</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Plazo (Meses)</label>
-                    <input type="number" name="months" id="months" required min="1" oninput="calculateTotal()">
-                    <small style="color: #64748b;">Número de cuotas: <strong
-                            id="display_installments">1</strong></small>
-                </div>
-
-                <div class="form-group">
-                    <label>Fecha de Inicio</label>
-                    <input type="date" name="start_date" value="<?= date('Y-m-d') ?>" required>
-                </div>
             </div>
 
-            <div
-                style="background: #f0f9ff; padding: 1.5rem; border-radius: 12px; margin: 1.5rem 0; border: 1px solid #bae6fd;">
-                <h3 style="color: #0369a1; margin-bottom: 1rem;"><i class="fas fa-calculator"></i> Resumen del
-                    Préstamo</h3>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span>Total a Pagar:</span>
-                    <strong style="font-size: 1.2rem; color: #0284c7;">$<span id="display_total">0.00</span></strong>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                    <span>Monto por Cuota:</span>
-                    <strong style="font-size: 1.2rem; color: #0284c7;">$<span
-                            id="display_installment">0.00</span></strong>
+            <!-- Right Column: Summary Widget -->
+            <div class="card summary-card">
+                <h3 class="summary-title"><i class="fas fa-calculator" style="color: var(--primary-color);"></i> Resumen
+                </h3>
+
+                <div class="summary-row">
+                    <span class="summary-label">Monto por Cuota</span>
+                    <span class="summary-value" style="color: var(--primary-color);">$<span
+                            id="display_installment">0.00</span></span>
                 </div>
 
-                <!-- Preview Button -->
-                <button type="button" class="btn btn-sm btn-secondary" style="margin-top: 1rem; width: 100%;"
-                    onclick="previewSchedule()">
-                    <i class="fas fa-list-ol"></i> Ver Tabla de Amortización
+                <div class="summary-row">
+                    <span class="summary-label">Nº de Cuotas</span>
+                    <span class="summary-value"><span id="display_installments">0</span></span>
+                </div>
+
+                <div style="margin: 1.5rem 0; border-top: 2px dashed var(--border-color);"></div>
+
+                <div style="text-align: center;">
+                    <span class="summary-label" style="display: block; margin-bottom: 0.5rem;">Costo Total del
+                        Crédito</span>
+                    <span class="summary-value total-value">$<span id="display_total">0.00</span></span>
+                </div>
+
+                <button type="button" class="btn-preview" onclick="previewSchedule()">
+                    <i class="fas fa-table"></i> Ver Tabla de Pagos
                 </button>
 
-                <!-- Schedule Container -->
                 <div id="schedule_preview" style="margin-top: 1rem;"></div>
+
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-check-circle"></i> Aprobar Préstamo
+                </button>
             </div>
 
-            <button type="submit" class="btn" style="width: 100%;"><i class="fas fa-check-circle"></i> Crear
-                Préstamo</button>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
 
 <script>
@@ -229,10 +455,10 @@ require 'components/enhanced_header.php';
         // Interest is MONTHLY: amount × (rate/100) × months
         const totalInterest = amount * (interest / 100) * months;
         const total = amount + totalInterest;
-        const installment = total / duration;
+        const installment = total / duration; // Division by zero protected by duration || 1 logic if months=0, but inputs are text
 
-        document.getElementById('display_total').innerText = total.toFixed(2);
-        document.getElementById('display_installment').innerText = installment.toFixed(2);
+        document.getElementById('display_total').innerText = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('display_installment').innerText = installment.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         document.getElementById('display_installments').innerText = duration;
 
         // Clear preview when parameters change
@@ -247,7 +473,19 @@ require 'components/enhanced_header.php';
         const start_date = document.querySelector('input[name="start_date"]').value;
 
         if (!amount || !interest_rate || !months || !start_date) {
-            alert("Por favor complete todos los campos para ver la tabla.");
+            const previewContainer = document.getElementById('schedule_preview');
+            previewContainer.innerHTML = `
+                <div style="background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b; padding: 0.75rem; border-radius: 8px; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+                    <i class="fas fa-exclamation-circle" style="color: #ef4444;"></i>
+                    <span>Completa todos los campos para ver la tabla.</span>
+                </div>
+            `;
+            // Auto hide after 3 seconds
+            setTimeout(() => {
+                if (previewContainer.innerHTML.includes('Completa todos')) {
+                    previewContainer.innerHTML = '';
+                }
+            }, 3000);
             return;
         }
 
@@ -258,7 +496,7 @@ require 'components/enhanced_header.php';
         formData.append('payment_frequency', payment_frequency);
         formData.append('start_date', start_date);
 
-        document.getElementById('schedule_preview').innerHTML = '<p style="text-align:center; color: #64748b;">Calculando...</p>';
+        document.getElementById('schedule_preview').innerHTML = '<p style="text-align:center; color: #64748b; font-size: 0.9rem; margin-top: 1rem;"><i class="fas fa-spinner fa-spin"></i> Calculando...</p>';
 
         fetch('ajax_calculate_schedule.php', {
             method: 'POST',
@@ -270,7 +508,7 @@ require 'components/enhanced_header.php';
             })
             .catch(error => {
                 console.error('Error:', error);
-                document.getElementById('schedule_preview').innerHTML = '<p style="color: red;">Error al cargar la tabla.</p>';
+                document.getElementById('schedule_preview').innerHTML = '<p style="color: red; text-align: center; font-size: 0.9rem;">Error al cargar.</p>';
             });
     }
 </script>

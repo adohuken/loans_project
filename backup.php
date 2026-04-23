@@ -99,141 +99,200 @@ require 'components/enhanced_header.php';
 ?>
 
 <style>
-    .backup-section {
-        padding: 1.5rem;
+    body {
+        background-color: var(--bg-secondary);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: var(--text-primary);
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .card {
+        background: var(--primary-surface);
+        border-radius: var(--radius-lg);
         border: 1px solid var(--border-color);
-        border-radius: 12px;
-        background: var(--bg-secondary);
-        transition: all 0.3s ease;
+        box-shadow: var(--shadow-sm);
+        padding: 2rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .backup-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+    }
+
+    .backup-section {
+        background: var(--secondary-surface);
+        padding: 2rem;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
     }
 
     .backup-section:hover {
-        border-color: var(--accent-primary);
-        box-shadow: 0 4px 12px var(--shadow);
+        border-color: var(--primary-color);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
     }
 
     .section-title {
         color: var(--text-primary);
-        margin-bottom: 0.5rem;
+        margin-bottom: 1rem;
         font-weight: 700;
+        font-size: 1.1rem;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
     }
 
     .section-desc {
         color: var(--text-secondary);
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
         font-size: 0.95rem;
+        line-height: 1.5;
+        flex-grow: 1;
     }
 
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.875rem 1.5rem;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        width: 100%;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+    }
+
+    .btn-danger {
+        background: #fef2f2;
+        color: var(--danger-color);
+        border: 1px solid #fee2e2;
+    }
+
+    .btn-danger:hover {
+        background: #fee2e2;
+    }
+
+    /* File Input */
     .file-input-wrapper {
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
     }
 
     input[type="file"] {
         background: var(--bg-tertiary);
-        color: var(--text-primary);
-        border: 1px solid var(--border-color);
         padding: 0.75rem;
-        border-radius: 8px;
+        border: 1px dashed var(--border-color);
+        border-radius: var(--radius-md);
         width: 100%;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
         cursor: pointer;
     }
 
-    input[type="file"]::file-selector-button {
-        background: var(--accent-lighter);
-        color: var(--accent-primary);
-        border: 1px solid var(--accent-primary);
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        cursor: pointer;
-        margin-right: 1rem;
-        font-weight: 600;
-        transition: all 0.2s;
+    input[type="file"]:hover {
+        border-color: var(--primary-color);
+        background: var(--bg-secondary);
     }
 
-    input[type="file"]::file-selector-button:hover {
-        background: var(--accent-primary);
-        color: white;
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        display: inline-flex;
+    /* Alert */
+    .alert-success {
+        background: #ecfdf5;
+        color: #047857;
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        margin-bottom: 2rem;
+        display: flex;
         align-items: center;
-        gap: 0.5rem;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    }
-
-    .btn-danger {
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.3s ease;
-    }
-
-    .btn-danger:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        gap: 0.75rem;
+        border: 1px solid #a7f3d0;
     }
 </style>
 
 <div class="container">
     <div class="card">
-        <h2 style="color: var(--text-primary); margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem;">
-            <i class="fas fa-database" style="color: var(--accent-primary);"></i> Backup y Restauración
+        <h2>
+            <i class="fas fa-database" style="color: var(--primary-color);"></i> Backup y Restauración
         </h2>
 
         <?php if ($message): ?>
-            <div
-                style="background: var(--accent-light); color: var(--accent-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--accent-primary); display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-check-circle"></i> <?= $message ?>
+            <div class="alert-success">
+                <i class="fas fa-check-circle" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 600;"><?= $message ?></span>
             </div>
         <?php endif; ?>
 
-        <div class="grid"
-            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+        <div class="backup-grid">
             <!-- Backup Section -->
             <div class="backup-section">
-                <h3 class="section-title"><i class="fas fa-download"></i> Crear Copia de Seguridad</h3>
-                <p class="section-desc">Descarga una copia completa de la base de datos en formato SQL para resguardar
-                    tu información.</p>
+                <h3 class="section-title">
+                    <div style="background: #eff6ff; padding: 8px; border-radius: 8px; color: var(--primary-color);">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    Crear Copia de Seguridad
+                </h3>
+                <p class="section-desc">
+                    Genera y descarga un archivo SQL con toda la información actual de la base de datos.
+                    Guardalo en un lugar seguro.
+                </p>
                 <form method="POST">
-                    <button type="submit" name="backup" class="btn-primary">
+                    <button type="submit" name="backup" class="btn btn-primary">
                         <i class="fas fa-download"></i> Descargar Backup SQL
                     </button>
                 </form>
             </div>
 
             <!-- Restore Section -->
-            <div class="backup-section">
-                <h3 class="section-title"><i class="fas fa-upload"></i> Restaurar Base de Datos</h3>
-                <p class="section-desc">Sube un archivo .sql previamente descargado para restaurar el sistema al estado
-                    de esa copia.</p>
+            <div class="backup-section" style="border-color: var(--danger-color); background: rgba(239, 68, 68, 0.05);">
+                <h3 class="section-title">
+                    <div style="background: #fee2e2; padding: 8px; border-radius: 8px; color: var(--danger-color);">
+                        <i class="fas fa-upload"></i>
+                    </div>
+                    Restaurar Base de Datos
+                </h3>
+                <p class="section-desc" style="color: #991b1b;">
+                    Sube un archivo .sql para restaurar el sistema.
+                    <strong>Advertencia:</strong> Esto reemplazará todos los datos actuales.
+                </p>
                 <form method="POST" enctype="multipart/form-data">
                     <div class="file-input-wrapper">
                         <input type="file" name="backup_file" accept=".sql" required>
                     </div>
-                    <button type="submit" name="restore" class="btn-danger"
+                    <button type="submit" name="restore" class="btn btn-danger"
                         onclick="return confirm('⚠️ ¡ADVERTENCIA CRÍTICA!\n\nEsta acción BORRARÁ TODOS los datos actuales y los reemplazará con los del archivo de respaldo.\n\n¿Estás absolutamente seguro de continuar?')">
                         <i class="fas fa-trash-restore"></i> Restaurar Sistema
                     </button>

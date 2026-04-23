@@ -1,5 +1,12 @@
-CREATE DATABASE IF NOT EXISTS loans_db;
-USE loans_db;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Borrar tablas antiguas para asegurar estructura limpia
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS loans;
+DROP TABLE IF EXISTS clients;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS portfolios;
+DROP TABLE IF EXISTS settings;
 
 -- Tabla de Carteras/Portfolios
 CREATE TABLE IF NOT EXISTS portfolios (
@@ -84,3 +91,5 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Insertar configuración por defecto si no existe
 INSERT IGNORE INTO settings (id, company_name, currency_symbol, interest_rate) 
 VALUES (1, 'Mi Empresa', '$', 15.00);
+
+SET FOREIGN_KEY_CHECKS = 1;

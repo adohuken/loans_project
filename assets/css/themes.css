@@ -15,18 +15,40 @@
     --accent-secondary: #2563eb;
     --accent-light: #dbeafe;
     --accent-lighter: #eff6ff;
+
+    /* Aliases for modular compatibility */
+    --primary-surface: var(--bg-primary);
+    --secondary-surface: var(--bg-secondary);
+    --primary-color: var(--accent-primary);
+    --primary-dark: var(--accent-secondary);
+    --danger-color: #ef4444;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --info-color: #8b5cf6;
 }
 
-/* Dark Theme */
-[data-theme="dark"] {
+/* Dark Theme - High Contrast */
+html[data-theme="dark"] {
     --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --bg-tertiary: #334155;
-    --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
+    --bg-secondary: #020617;
+    --bg-tertiary: #1e293b;
+    --text-primary: #ffffff;
+    --text-secondary: #f1f5f9;
     --text-tertiary: #94a3b8;
-    --border-color: #475569;
-    --shadow: rgba(0, 0, 0, 0.3);
+    --border-color: #334155;
+    --shadow: rgba(0, 0, 0, 0.8);
+
+    /* Dark-friendly accent variations - BRIGHTER */
+    --accent-primary: #60a5fa;
+    --accent-secondary: #3b82f6;
+    --accent-light: rgba(96, 165, 250, 0.25);
+    --accent-lighter: rgba(96, 165, 250, 0.15);
+
+    /* Aliases */
+    --primary-surface: var(--bg-primary);
+    --secondary-surface: var(--bg-secondary);
+    --primary-color: var(--accent-primary);
+    --primary-dark: var(--accent-secondary);
 }
 
 /* Color Themes */
@@ -82,6 +104,27 @@ body {
     background: var(--bg-secondary);
 }
 
+/* Modern Table Global Styles */
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.modern-table th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modern-table td {
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modern-table tr:hover td {
+    background: var(--bg-secondary);
+}
+
 /* Header with theme controls */
 header {
     background: var(--bg-primary) !important;
@@ -90,12 +133,22 @@ header {
 
 header nav a {
     color: var(--text-secondary);
+    font-weight: 500;
 }
 
 header nav a:hover,
 header nav a.active {
-    color: var(--accent-primary);
-    background: var(--accent-lighter);
+    color: var(--accent-primary) !important;
+    background: var(--accent-lighter) !important;
+}
+
+header nav a i {
+    opacity: 0.8;
+}
+
+header nav a:hover i,
+header nav a.active i {
+    opacity: 1;
 }
 
 /* Theme Toggle Button */

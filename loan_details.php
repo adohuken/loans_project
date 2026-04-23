@@ -38,6 +38,19 @@ $stmt_payments = $pdo->prepare("SELECT * FROM payments WHERE loan_id = ? ORDER B
 $stmt_payments->execute([$loan_id]);
 $payments = $stmt_payments->fetchAll();
 
+// Fetch Transactions (Receipts History)
+$stmt_transactions = $pdo->prepare("SELECT * FROM transactions WHERE loan_id = ? ORDER BY payment_date DESC");
+$stmt_transactions->execute([$loan_id]);
+$transactions = $stmt_transactions->fetchAll();
+
+// Identify the last entered payment (highest ID)
+$last_entered_payment_id = 0;
+foreach ($payments as $p) {
+    if ($p['id'] > $last_entered_payment_id) {
+        $last_entered_payment_id = $p['id'];
+    }
+}
+
 // Calculate Progress
 $total_paid = 0;
 foreach ($payments as $p) {
@@ -56,183 +69,465 @@ $logo_path = $settings['logo_path'] ?? '';
 require 'components/enhanced_header.php';
 ?>
 
+<style>
+    /* Premium Design Overrides */
+    .loan-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .client-profile {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+    }
+
+    .client-avatar {
+        width: 80px;
+        height: 80px;
+        background: var(--accent-light);
+        color: var(--accent-primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: bold;
+        box-shadow: var(--shadow);
+    }
+
+    .client-info h1 {
+        font-size: 1.8rem;
+        margin: 0;
+        color: var(--text-primary);
+    }
+
+    .client-info p {
+        color: var(--text-secondary);
+        margin: 0.25rem 0 0 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .loan-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+    }
+
+    .stat-item {
+        background: var(--bg-primary);
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        transition: all 0.2s;
+    }
+
+    .stat-item:hover {
+        transform: translateY(-2px);
+        background: var(--bg-secondary);
+        box-shadow: var(--shadow);
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .transaction-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .transaction-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        transition: all 0.2s;
+    }
+
+    .transaction-item:hover {
+        border-color: var(--accent-primary);
+        box-shadow: var(--shadow);
+    }
+
+    .t-icon {
+        width: 45px;
+        height: 45px;
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        color: #15803d;
+        border: 1px solid #86efac;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        margin-right: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(22, 101, 52, 0.1);
+    }
+
+    .t-info {
+        flex: 1;
+    }
+
+    .t-date {
+        font-weight: 600;
+        color: #334155;
+    }
+
+    .t-meta {
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+
+    .t-amount {
+        font-weight: 700;
+        color: #10b981;
+        font-size: 1.1rem;
+        text-align: right;
+    }
+
+    .progress-track {
+        background: #e2e8f0;
+        height: 12px;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 1rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        border-radius: 10px;
+        transition: width 1s ease-in-out;
+    }
+
+    /* Override standard table for cleaner look */
+    .clean-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .clean-table th {
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        font-weight: 600;
+        padding: 1rem;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .clean-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    .clean-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .clean-table tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .btn-secondary.btn-icon {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary.btn-icon:hover {
+        border-color: #cbd5e1;
+        color: #334155;
+        background: #f8fafc;
+    }
+
+    .btn-icon.danger {
+        color: #ef4444;
+        border-color: #fee2e2;
+        background: #fef2f2;
+    }
+
+    .btn-icon.danger:hover {
+        background: #fee2e2;
+        border-color: #fca5a5;
+    }
+</style>
+
+<?php
+// Verification of Total Balance vs Payments Sum
+$calculated_total_due = 0;
+foreach ($payments as $p) {
+    $calculated_total_due += $p['amount_due'];
+}
+
+// Logic to detect mismatch (tolerance of 0.05 for decimals)
+$has_mismatch = abs($loan['total_amount'] - $calculated_total_due) > 0.05;
+?>
+
 <div class="container">
-    <div class="grid grid-2-3">
-        <!-- Loan Info -->
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-                <h2><i class="fas fa-info-circle"></i> Información del Préstamo</h2>
-                <button onclick="window.print()" class="btn btn-sm btn-secondary no-print"><i class="fas fa-print"></i>
-                    Imprimir</button>
+    <?php if (isset($_GET['msg'])): ?>
+        <div
+            style="background-color: #dcfce7; border: 1px solid #bbf7d0; color: #166534; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-check-circle" style="font-size: 1.25rem;"></i>
+            <div>
+                <strong>¡Operación Exitosa!</strong>
+                <p style="margin: 0; font-size: 0.95rem;"><?= htmlspecialchars(urldecode($_GET['msg'])) ?></p>
             </div>
+        </div>
+    <?php endif; ?>
 
-            <div style="margin-bottom: 1.5rem;">
-                <h3 style="color: var(--primary-solid); margin-bottom: 0.5rem;">
-                    <?= htmlspecialchars($loan['name']) ?>
-                </h3>
-                <p><i class="fas fa-id-card"></i> <?= htmlspecialchars($loan['cedula'] ?? 'N/A') ?></p>
-                <p><i class="fas fa-phone"></i> <?= htmlspecialchars($loan['phone'] ?? 'N/A') ?></p>
-                <p><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($loan['address'] ?? 'N/A') ?></p>
-                <?php if ($loan['portfolio_name']): ?>
-                    <p style="margin-top: 0.5rem;">
-                        <span class="badge" style="background-color: #e0e7ff; color: #4338ca;">
-                            <i class="fas fa-folder"></i> <?= htmlspecialchars($loan['portfolio_name']) ?>
-                        </span>
-                    </p>
-                <?php endif; ?>
+    <?php if (isset($_GET['error'])): ?>
+        <div
+            style="background-color: #fee2e2; border: 1px solid #fecaca; color: #991b1b; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-exclamation-circle" style="font-size: 1.25rem;"></i>
+            <div>
+                <strong>¡Ocurrió un Error!</strong>
+                <p style="margin: 0; font-size: 0.95rem;"><?= htmlspecialchars(urldecode($_GET['error'])) ?></p>
             </div>
-
-            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                <div>
-                    <small style="color: #64748b;">Monto Prestado</small>
-                    <p style="font-weight: bold; font-size: 1.1rem;">
-                        <?= $currency ?><?= number_format($loan['amount'], 2) ?>
-                    </p>
-                </div>
-                <div>
-                    <small style="color: #64748b;">Total a Pagar</small>
-                    <p style="font-weight: bold; font-size: 1.1rem; color: var(--primary-solid);">
-                        <?= $currency ?><?= number_format($loan['total_amount'], 2) ?>
-                    </p>
-                </div>
-                <div>
-                    <small style="color: #64748b;"><i class="fas fa-check-circle"></i> Total Pagado</small>
-                    <p style="font-weight: bold; font-size: 1.1rem; color: var(--success);">
-                        <?= $currency ?><?= number_format($total_paid, 2) ?>
-                    </p>
-                </div>
-                <div>
-                    <small style="color: #64748b;"><i class="fas fa-wallet"></i> Saldo Restante</small>
-                    <p
-                        style="font-weight: bold; font-size: 1.1rem; color: <?= ($loan['total_amount'] - $total_paid) > 0 ? '#f59e0b' : 'var(--success)' ?>;">
-                        <?= $currency ?><?= number_format($loan['total_amount'] - $total_paid, 2) ?>
-                    </p>
-                </div>
-                <div>
-                    <small style="color: #64748b;">Frecuencia</small>
-                    <p style="font-weight: bold;">
-                        <?php
-                        $frequencies = [
-                            'weekly' => 'Semanal',
-                            'biweekly' => 'Quincenal',
-                            'monthly' => 'Mensual'
-                        ];
-                        echo $frequencies[strtolower($loan['frequency'])] ?? $loan['frequency'];
-                        ?>
-                    </p>
-                </div>
-                <div>
-                    <small style="color: #64748b;">Estado</small>
-                    <p>
-                        <span class="badge badge-<?= $loan['status'] == 'active' ? 'pending' : 'paid' ?>">
-                            <?= strtoupper($loan['status']) ?>
-                        </span>
-                    </p>
-                </div>
+        </div>
+    <?php endif; ?>
+    <div class="loan-header">
+        <div class="client-profile">
+            <div class="client-avatar">
+                <?= strtoupper(substr($loan['name'], 0, 1)) ?>
             </div>
-
-            <div style="margin-top: 1rem;">
-                <small style="color: #64748b;">Progreso de Pago</small>
-                <div style="background: #e2e8f0; height: 10px; border-radius: 5px; margin-top: 5px; overflow: hidden;">
-                    <div style="background: var(--success); width: <?= $progress ?>%; height: 100%;"></div>
-                </div>
-                <p style="text-align: right; font-size: 0.9rem; margin-top: 5px;">
-                    <?= number_format($progress, 1) ?>%
+            <div class="client-info">
+                <h1><?= htmlspecialchars($loan['name']) ?></h1>
+                <p>
+                    <i class="fas fa-id-card"></i> <?= htmlspecialchars($loan['cedula'] ?? 'N/A') ?> &bull;
+                    <i class="fas fa-folder"></i> <?= htmlspecialchars($loan['portfolio_name'] ?? 'General') ?>
                 </p>
+                <div style="margin-top: 0.5rem;">
+                    <?php if ($loan['status'] == 'active'): ?>
+                        <span class="badge" style="background:#dbeafe; color:#1e40af;">Activo</span>
+                    <?php elseif ($loan['status'] == 'paid'): ?>
+                        <span class="badge" style="background:#dcfce7; color:#166534;">Pagado</span>
+                    <?php else: ?>
+                        <span class="badge" style="background:#f3f4f6; color:#1f2937;">Cancelado</span>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
 
-        <!-- Payment Schedule -->
+        <div class="loan-actions">
+            <a href="process_payment.php?loan_id=<?= $loan['id'] ?>" class="btn"
+                style="background: #10b981; color: white; border: none; padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);">
+                <i class="fas fa-plus-circle"></i> Registrar Abono
+            </a>
+            <a href="edit_loan.php?id=<?= $loan['id'] ?>" class="btn-secondary btn-icon"
+                title="Editar condiciones y datos del préstamo" style="width: auto; padding: 0.75rem;">
+                <i class="fas fa-cog"></i>
+            </a>
+            <a href="print_payment_plan.php?loan_id=<?= $loan['id'] ?>" target="_blank" class="btn-secondary btn-icon"
+                title="Imprimir tabla de amortización y plan de pagos" style="width: auto; padding: 0.75rem;">
+                <i class="fas fa-print"></i>
+            </a>
+            <?php if ($user_role !== 'cobrador'): ?>
+                <form action="cancel_loan.php" method="POST" onsubmit="return confirm('¿ELIMINAR PRÉSTAMO?');"
+                    style="display:inline;">
+                    <input type="hidden" name="loan_id" value="<?= $loan['id'] ?>">
+                    <button type="submit" class="btn-icon danger"
+                        title="Eliminar este préstamo y todo su historial permanentemente"
+                        style="padding: 0.75rem; border: 1px solid #fee2e2; background: #fff; width: auto; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </form>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="grid grid-2-3">
+        <!-- Main Info Column -->
+        <div style="display: flex; flex-direction: column; gap: 2rem;">
+
+            <!-- Financial Overview Card -->
+            <div class="card">
+                <h3
+                    style="border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1rem; color: #64748b; font-size: 0.9rem; text-transform: uppercase;">
+                    Resumen Financiero</h3>
+
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Total Prestado</div>
+                        <div class="stat-value"><?= $currency . number_format($loan['amount'], 2) ?></div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Total a Pagar</div>
+                        <div class="stat-value" style="color: #6366f1;">
+                            <?= $currency . number_format($loan['total_amount'], 2) ?>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Pagado</div>
+                        <div class="stat-value" style="color: #10b981;"><?= $currency . number_format($total_paid, 2) ?>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Pendiente</div>
+                        <div class="stat-value"
+                            style="color: <?= ($loan['total_amount'] - $total_paid) > 0 ? '#f59e0b' : '#94a3b8' ?>;">
+                            <?= $currency . number_format($loan['total_amount'] - $total_paid, 2) ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem;">
+                        <span>Progreso de Pago</span>
+                        <span><?= number_format($progress, 1) ?>%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width: <?= $progress ?>%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction History -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-history" style="color: #6366f1;"></i> Historial de Transacciones
+                    </h3>
+                </div>
+
+                <?php if (count($transactions) > 0): ?>
+                    <div class="transaction-list">
+                        <?php foreach ($transactions as $t): ?>
+                            <div class="transaction-item">
+                                <div style="display: flex; align-items: center;">
+                                    <div class="t-icon">
+                                        <i class="fas fa-receipt"></i>
+                                    </div>
+                                    <div class="t-info">
+                                        <div class="t-date"><?= date('d M, Y', strtotime($t['payment_date'])) ?></div>
+                                        <div class="t-meta">Recibo #<?= str_pad($t['id'], 6, '0', STR_PAD_LEFT) ?></div>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div class="t-amount"><?= $currency . number_format($t['total_amount'], 2) ?></div>
+                                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem;">
+                                        <a href="receipt.php?transaction_id=<?= $t['id'] ?>" target="_blank" title="Ver Recibo"
+                                            style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #eff6ff; color: #3b82f6; border-radius: 8px; transition: all 0.2s;">
+                                            <i class="fas fa-file-invoice" style="font-size: 0.9rem;"></i>
+                                        </a>
+                                        <?php if ($user_role !== 'cobrador'): ?>
+                                            <form action="void_transaction.php" method="POST" onsubmit="confirmVoid(event, this)"
+                                                style="margin: 0;">
+                                                <input type="hidden" name="transaction_id" value="<?= $t['id'] ?>">
+                                                <button type="submit"
+                                                    style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #fef2f2; color: #ef4444; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                                                    title="Anular Transacción">
+                                                    <i class="fas fa-trash-alt" style="font-size: 0.9rem;"></i>
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div
+                        style="text-align: center; padding: 2rem; color: #94a3b8; border: 2px dashed #e2e8f0; border-radius: 12px;">
+                        <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>No hay transacciones registradas aún.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+        </div>
+
+        <!-- Schedule Column -->
         <div class="card">
-            <h2><i class="fas fa-calendar-alt"></i> Calendario de Pagos</h2>
-            <div class="table-responsive">
-                <table>
+            <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-calendar-check" style="color: #f59e0b;"></i> Calendario de Pagos
+            </h3>
+
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table class="clean-table">
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>Fecha Vencimiento</th>
-                            <th>Monto Cuota</th>
+                            <th>Vencimiento</th>
+                            <th>Cuota</th>
                             <th>Abonado</th>
-                            <th>Saldo</th>
-                            <th>Mora</th>
                             <th>Estado</th>
-                            <th>Fecha Pago</th>
-                            <th class="no-print">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($payments as $index => $payment):
                             $is_late = ($payment['status'] == 'pending' && strtotime($payment['due_date']) < strtotime(date('Y-m-d')));
-                            $balance = $payment['amount_due'] - $payment['paid_amount'];
                             $is_partial = $payment['paid_amount'] > 0 && $payment['paid_amount'] < $payment['amount_due'];
                             ?>
-                            <tr style="<?= $is_partial ? 'background-color: #fffbeb;' : '' ?>">
-                                <td><?= $index + 1 ?></td>
-                                <td style="<?= $is_late ? 'color: #ef4444; font-weight: bold;' : '' ?>">
-                                    <?= $payment['due_date'] ?>
-                                    <?php if ($is_late): ?>
-                                        <i class="fas fa-exclamation-circle" title="Atrasado"></i>
+                            <tr>
+                                <td style="color: #94a3b8; font-weight: 500;"><?= $index + 1 ?></td>
+                                <td style="<?= $is_late ? 'color: #ef4444; font-weight: 600;' : '' ?>">
+                                    <?= date('d/m/Y', strtotime($payment['due_date'])) ?>
+                                    <?php if ($is_late): ?><i class="fas fa-exclamation-circle"
+                                            style="font-size: 0.8rem;"></i><?php endif; ?>
+                                </td>
+                                <td style="font-weight: 600;"><?= $currency . number_format($payment['amount_due'], 2) ?>
+                                </td>
+                                <td>
+                                    <?php if ($payment['paid_amount'] > 0): ?>
+                                        <span
+                                            style="color: #10b981; font-weight: 600;"><?= $currency . number_format($payment['paid_amount'], 2) ?></span>
+                                        <?php if ($is_partial): ?>
+                                            <div style="font-size: 0.75rem; color: #f59e0b;">Restan:
+                                                <?= $currency . number_format($payment['amount_due'] - $payment['paid_amount'], 2) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span style="color: #cbd5e1;">-</span>
                                     <?php endif; ?>
                                 </td>
-                                <td><?= $currency ?><?= number_format($payment['amount_due'], 2) ?></td>
-
-                                <!-- Columna Abonado -->
-                                <td
-                                    style="color: <?= $payment['paid_amount'] > 0 ? '#10b981' : '#64748b' ?>; font-weight: bold;">
-                                    <?= $currency ?>     <?= number_format($payment['paid_amount'], 2) ?>
-                                    <?php if ($is_partial): ?>
-                                        <br><small
-                                            style="color: #f59e0b; font-weight: normal;">(<?= number_format(($payment['paid_amount'] / $payment['amount_due']) * 100, 0) ?>%)</small>
-                                    <?php endif; ?>
-                                </td>
-
-                                <!-- Columna Saldo -->
                                 <td>
                                     <?php if ($payment['status'] == 'paid'): ?>
-                                        <span style="color: #10b981;">-</span>
+                                        <span style="color: #10b981; font-size: 0.9rem;"><i
+                                                class="fas fa-check-circle"></i></span>
                                     <?php else: ?>
                                         <span
-                                            style="color: #ef4444; font-weight: bold;"><?= $currency ?><?= number_format($balance, 2) ?></span>
-                                    <?php endif; ?>
-                                </td>
-
-                                <td style="color: #ef4444;">
-                                    <?= $payment['late_fee'] > 0 ? $currency . number_format($payment['late_fee'], 2) : '-' ?>
-                                </td>
-
-                                <td>
-                                    <?php if ($payment['status'] == 'paid'): ?>
-                                        <span class="badge badge-paid"><i class="fas fa-check"></i> PAGADO</span>
-                                    <?php elseif ($is_partial): ?>
-                                        <span class="badge" style="background: #f59e0b; color: white;"><i
-                                                class="fas fa-adjust"></i> PARCIAL</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-pending">PENDIENTE</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php
-                                    if (!empty($payment['paid_date']) && $payment['paid_date'] != '0000-00-00 00:00:00') {
-                                        echo date('d/m/Y', strtotime($payment['paid_date']));
-                                    } else {
-                                        echo '-';
-                                    }
-                                    ?>
-                                </td>
-                                <td class="no-print">
-                                    <?php if ($payment['status'] != 'paid'): ?>
-                                        <a href="process_payment.php?id=<?= $payment['id'] ?>" class="btn btn-sm">
-                                            <i class="fas fa-money-bill"></i> <?= $is_partial ? 'Completar' : 'Pagar' ?>
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="receipt.php?payment_id=<?= $payment['id'] ?>" target="_blank"
-                                            class="btn btn-sm btn-secondary">
-                                            <i class="fas fa-receipt"></i> Recibo
-                                        </a>
-                                        <?php if ($user_role !== 'cobrador'): ?>
-                                            <!-- Opcional: Botón para editar pago solo para admins -->
-                                            <!-- <a href="edit_payment.php?id=<?= $payment['id'] ?>" class="btn btn-sm btn-secondary"><i class="fas fa-edit"></i></a> -->
-                                        <?php endif; ?>
+                                            style="width: 8px; height: 8px; background: <?= $is_late ? '#ef4444' : ($is_partial ? '#f59e0b' : '#cbd5e1') ?>; border-radius: 50%; display: inline-block;"></span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -243,6 +538,28 @@ require 'components/enhanced_header.php';
         </div>
     </div>
 </div>
+
+<script>
+    function confirmVoid(event, form) {
+        event.preventDefault();
+
+        Swal.fire({
+            title: '¿Anular Transacción?',
+            text: "Esta acción revertirá los pagos asociados y no se puede deshacer de forma automática.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Sí, Anular',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    }
+</script>
 </body>
 
 </html>

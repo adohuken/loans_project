@@ -1,6 +1,7 @@
 <?php
 require 'db.php';
 
+$transaction_id = $_GET['transaction_id'] ?? 0;
 $payment_id = $_GET['payment_id'] ?? 0;
 
 // Fetch Settings
@@ -13,43 +14,118 @@ $address = $settings['company_address'] ?? '';
 $phone = $settings['company_phone'] ?? '';
 $footer_msg = $settings['receipt_footer'] ?? '';
 
-// Fetch Payment Data
-$stmt = $pdo->prepare("
-    SELECT 
-        p.*,
-        l.amount as loan_amount,
-        l.total_amount as loan_total,
-        l.interest_rate,
-        c.name as client_name,
-        c.cedula,
-        c.phone as client_phone,
-        c.address as client_address
-    FROM payments p
-    JOIN loans l ON p.loan_id = l.id
-    JOIN clients c ON l.client_id = c.id
-    WHERE p.id = ?
-");
-$stmt->execute([$payment_id]);
-$data = $stmt->fetch();
+$data = null;
+$details = [];
+$mode = ''; // 'transaction' or 'single_payment'
+
+if ($transaction_id) {
+    $mode = 'transaction';
+    // Fetch Transaction Data
+    $stmt = $pdo->prepare("
+        SELECT 
+            t.id as receipt_id,
+            t.payment_date as date,
+            t.total_amount,
+            l.id as loan_id,
+            l.amount as loan_amount,
+            c.name as client_name,
+            c.cedula,
+            c.phone as client_phone,
+            c.address as client_address
+        FROM transactions t
+        JOIN loans l ON t.loan_id = l.id
+        JOIN clients c ON l.client_id = c.id
+        WHERE t.id = ?
+    ");
+    $stmt->execute([$transaction_id]);
+    $data = $stmt->fetch();
+
+    if ($data) {
+        // Fetch Details
+        $stmt_det = $pdo->prepare("
+            SELECT 
+                td.*,
+                p.due_date,
+                p.amount_due
+            FROM transaction_details td
+            JOIN payments p ON td.payment_id = p.id
+            WHERE td.transaction_id = ?
+        ");
+        $stmt_det->execute([$transaction_id]);
+        $details = $stmt_det->fetchAll();
+    }
+
+} elseif ($payment_id) {
+    $mode = 'single_payment';
+    // Fetch Single Payment Data (Legacy Mode)
+    $stmt = $pdo->prepare("
+        SELECT 
+            p.id as receipt_id,
+            p.paid_date as date,
+            p.paid_amount,
+            p.late_fee,
+            p.amount_due,
+            p.due_date,
+            l.id as loan_id,
+            l.amount as loan_amount,
+            l.total_amount as loan_total, -- Added to track balances
+            c.name as client_name,
+            c.cedula,
+            c.phone as client_phone,
+            c.address as client_address
+        FROM payments p
+        JOIN loans l ON p.loan_id = l.id
+        JOIN clients c ON l.client_id = c.id
+        WHERE p.id = ?
+    ");
+    $stmt->execute([$payment_id]);
+    $data = $stmt->fetch();
+
+    if ($data) {
+        // Calculate total paid for this specific receipt logic
+        // Note: In legacy mode, we treated the payment row as the receipt. 
+        // We will simulate the 'total_amount' for consistency
+        $data['total_amount'] = $data['paid_amount'] + ($data['late_fee'] ?? 0); // Assuming late_fee is fully paid if present in this context? 
+        // Actually, existing code used paid_amount + late_fee (if any added).
+        // Let's stick to what was there: $total_paid = $data['paid_amount'] + ($data['late_fee'] ?? 0);
+    }
+}
 
 if (!$data) {
     die("Recibo no encontrado");
 }
 
-// Calculate total with late fee
-$total_paid = $data['paid_amount'] + ($data['late_fee'] ?? 0);
-// Calculate Balance History
-$stmt_history = $pdo->prepare("SELECT SUM(paid_amount) as total_paid_so_far FROM payments WHERE loan_id = ? AND id <= ?");
-$stmt_history->execute([$data['loan_id'], $payment_id]);
-$history = $stmt_history->fetch();
-$total_paid_so_far = $history['total_paid_so_far'] ?? 0;
+// Calculate Saldo Restante (Global Loan Balance)
+// We need to sum all payments made UP TO this transaction/payment date.
+// Or just sum all payments period.
+// For accuracy on the receipt, usually it shows the balance AFTER this payment.
+if ($mode == 'transaction') {
+    // Sum of all payments (paid_amount) in `payments` table for this loan
+    $stmt_bal = $pdo->prepare("SELECT SUM(paid_amount) FROM payments WHERE loan_id = ?");
+    $stmt_bal->execute([$data['loan_id']]);
+    $total_paid_loan = $stmt_bal->fetchColumn() ?: 0;
 
-$saldo_restante = $data['loan_total'] - $total_paid_so_far;
-$saldo_inicial = $saldo_restante + $data['paid_amount'];
+    // Get Loan Total
+    $stmt_loan = $pdo->prepare("SELECT total_amount FROM loans WHERE id = ?");
+    $stmt_loan->execute([$data['loan_id']]);
+    $loan_total = $stmt_loan->fetchColumn();
 
-// Ensure no negative values (just in case)
-$saldo_restante = max(0, $saldo_restante);
-$saldo_inicial = max(0, $saldo_inicial);
+    $saldo_restante = max(0, $loan_total - $total_paid_loan);
+    $saldo_inicial = $saldo_restante + $data['total_amount']; // Approx
+} else {
+    // Logic from old file
+    $stmt_history = $pdo->prepare("SELECT SUM(paid_amount) as total_paid_so_far FROM payments WHERE loan_id = ? AND id <= ?");
+    $stmt_history->execute([$data['loan_id'], $payment_id]);
+    $history = $stmt_history->fetch();
+    $total_paid_so_far = $history['total_paid_so_far'] ?? 0;
+
+    $saldo_restante = $data['loan_total'] - $total_paid_so_far;
+    $saldo_inicial = $saldo_restante + $data['paid_amount'];
+
+    $saldo_restante = max(0, $saldo_restante);
+    $saldo_inicial = max(0, $saldo_inicial);
+}
+
 
 ?>
 <!DOCTYPE html>
@@ -57,7 +133,7 @@ $saldo_inicial = max(0, $saldo_inicial);
 
 <head>
     <meta charset="UTF-8">
-    <title>Recibo de Pago #<?= $data['id'] ?></title>
+    <title>Recibo de Pago #<?= $data['receipt_id'] ?></title>
     <style>
         body {
             font-family: 'Courier New', Courier, monospace;
@@ -130,6 +206,23 @@ $saldo_inicial = max(0, $saldo_inicial);
             font-size: 1rem;
         }
 
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin: 10px 0;
+        }
+
+        .details-table th,
+        .details-table td {
+            text-align: left;
+            padding: 4px 0;
+        }
+
+        .details-table td.amount {
+            text-align: right;
+        }
+
         @media print {
             body {
                 background: white;
@@ -165,17 +258,17 @@ $saldo_inicial = max(0, $saldo_inicial);
 
         <div class="row">
             <span>Recibo No:</span>
-            <span><strong>#<?= str_pad($data['id'], 6, '0', STR_PAD_LEFT) ?></strong></span>
+            <span><strong>#<?= str_pad($data['receipt_id'], 6, '0', STR_PAD_LEFT) ?></strong></span>
         </div>
 
         <div class="row">
             <span>Fecha:</span>
-            <span><?= date('d/m/Y', strtotime($data['paid_date'])) ?></span>
+            <span><?= date('d/m/Y', strtotime($data['date'])) ?></span>
         </div>
 
         <div class="row">
             <span>Hora:</span>
-            <span><?= date('h:i A', strtotime($data['paid_date'])) ?></span>
+            <span><?= date('h:i A', strtotime($data['date'])) ?></span>
         </div>
 
         <hr style="border: none; border-top: 1px dashed #333; margin: 15px 0;">
@@ -194,46 +287,71 @@ $saldo_inicial = max(0, $saldo_inicial);
 
         <hr style="border: none; border-top: 1px dashed #333; margin: 15px 0;">
 
-        <div class="row">
-            <span>Concepto:</span>
-            <span>Pago de Cuota</span>
-        </div>
+        <?php if ($mode == 'transaction'): ?>
+            <p style="margin: 5px 0; font-weight: bold;">Detalle de Pago:</p>
+            <table class="details-table">
+                <thead>
+                    <tr>
+                        <th>Concepto / Venc.</th>
+                        <th class="amount">Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($details as $det):
+                        $type_label = ($det['type'] == 'late_fee') ? 'Mora' : 'Cuota';
+                        $date_label = date('d/m/Y', strtotime($det['due_date']));
+                        ?>
+                        <tr>
+                            <td><?= $type_label ?> (<?= $date_label ?>)</td>
+                            <td class="amount"><?= $currency . number_format($det['amount_applied'], 2) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <div class="row">
+                <span>Concepto:</span>
+                <span>Pago de Cuota</span>
+            </div>
+            <div class="row">
+                <span>Fecha Vencimiento:</span>
+                <span><?= date('d/m/Y', strtotime($data['due_date'])) ?></span>
+            </div>
 
-        <div class="row">
-            <span>Fecha Vencimiento:</span>
-            <span><?= date('d/m/Y', strtotime($data['due_date'])) ?></span>
-        </div>
+            <div class="row">
+                <span>Monto Cuota:</span>
+                <span><?= $currency ?><?= number_format($data['amount_due'], 2) ?></span>
+            </div>
+            <?php if (isset($data['late_fee']) && $data['late_fee'] > 0): ?>
+                <div class="row" style="color: #dc2626;">
+                    <span>Mora/Recargo:</span>
+                    <span><?= $currency ?><?= number_format($data['late_fee'], 2) ?></span>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
 
-        
-        <div class="row">
-            <span>Saldo Inicial:</span>
-            <span><?= $currency ?><?= number_format($saldo_inicial, 2) ?></span>
-        </div>
-<div class="row">
-            <span>Monto Cuota:</span>
-            <span><?= $currency ?><?= number_format($data['amount_due'], 2) ?></span>
-        </div>
+        <hr style="border: none; border-top: 1px dashed #333; margin: 15px 0;">
 
-        <div class="row">
-            <span>Monto Pagado:</span>
-            <span><?= $currency ?><?= number_format($data['paid_amount'], 2) ?></span>
+        <?php if ($mode == 'transaction'): ?>
+            <div class="row">
+                <span>Saldo Anterior (Aprox):</span>
+                <span><?= $currency ?><?= number_format($saldo_inicial, 2) ?></span>
+            </div>
+        <?php else: ?>
+            <div class="row">
+                <span>Saldo Inicial:</span>
+                <span><?= $currency ?><?= number_format($saldo_inicial, 2) ?></span>
+            </div>
+        <?php endif; ?>
+
+        <div class="row total">
+            <span>TOTAL PAGADO:</span>
+            <span><?= $currency ?><?= number_format($data['total_amount'], 2) ?></span>
         </div>
 
         <div class="row">
             <span>Saldo Restante:</span>
             <span><?= $currency ?><?= number_format($saldo_restante, 2) ?></span>
-        </div>
-
-        <?php if (isset($data['late_fee']) && $data['late_fee'] > 0): ?>
-            <div class="row" style="color: #dc2626;">
-                <span>Mora/Recargo:</span>
-                <span><?= $currency ?><?= number_format($data['late_fee'], 2) ?></span>
-            </div>
-        <?php endif; ?>
-
-        <div class="row total">
-            <span>TOTAL RECIBIDO:</span>
-            <span><?= $currency ?><?= number_format($total_paid, 2) ?></span>
         </div>
 
         <div class="footer">
@@ -249,6 +367,9 @@ $saldo_inicial = max(0, $saldo_inicial);
     </div>
 
     <button onclick="window.print()" class="btn-print">🖨️ Imprimir Recibo</button>
+
+    <a href='loan_details.php?id=<?= $data['loan_id'] ?>' class='btn-print'
+        style='background: #10b981; margin-top: 10px; text-decoration: none;'>← Volver al Préstamo</a>
 </body>
 
-</html>    <a href='active_loans.php' class='btn-print' style='background: #10b981; margin-top: 10px; text-decoration: none;'>← Volver a Abonar</a>
+</html>
