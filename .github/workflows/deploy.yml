@@ -1,4 +1,4 @@
-name: Deploy to Hosting
+name: Auto-Deploy to Hosting
 
 on:
   push:
