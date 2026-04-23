@@ -12,10 +12,10 @@ if ($is_local) {
     $password = '';
 } else {
     // Configuración PRODUCCIÓN (InfinityFree)
-    $host = 'sql302.infinityfree.com'; // Por favor verifica si este es tu host de producción
+    $host = 'sql208.infinityfree.com';
     $dbname = 'if0_40835015_loans_db';
     $username = 'if0_40835015';
-    $password = 'TU_PASSWORD_DE_PRODUCCION'; // REEMPLAZAR con tu contraseña real de InfinityFree
+    $password = 'Hp97zNV7JAD';
 }
 
 try {
