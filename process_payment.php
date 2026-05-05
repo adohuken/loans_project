@@ -18,8 +18,9 @@ if ($payment_id == 0 && $loan_id_param > 0) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = $_POST['payment_id'];
-    $late_fee = $_POST['late_fee'] ?? 0;
-    $amount_paid = $_POST['amount'] ?? 0; // Fix: Initialize amount_paid
+    $late_fee = isset($_POST['late_fee']) ? floatval($_POST['late_fee']) : 0;
+    // Total cash received is the sum of the base amount and the late fee explicitly charged
+    $amount_paid = (isset($_POST['amount']) ? floatval($_POST['amount']) : 0) + $late_fee; 
     $only_late_fee = isset($_POST['only_late_fee']) && $_POST['only_late_fee'] == '1';
 
     // Get current payment info
@@ -76,40 +77,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $p_paid_amount = $payment['paid_amount'];
 
                 // A. Pagar Mora primero
-                $mora_pending = $p_late_fee - $p_paid_late_fee;
+                $mora_pending = round($p_late_fee - $p_paid_late_fee, 2);
                 $pay_to_mora = 0;
 
                 if ($mora_pending > 0) {
-                    if ($remaining_money >= $mora_pending) {
+                    if (round($remaining_money, 2) >= $mora_pending) {
                         $pay_to_mora = $mora_pending;
-                        $remaining_money -= $mora_pending;
+                        $remaining_money = round($remaining_money - $mora_pending, 2);
                     } else {
-                        $pay_to_mora = $remaining_money;
+                        $pay_to_mora = round($remaining_money, 2);
                         $remaining_money = 0;
                     }
                 }
 
                 // B. Pagar Capital
-                $capital_pending = $p_amount_due - $p_paid_amount;
+                $capital_pending = round($p_amount_due - $p_paid_amount, 2);
                 $pay_to_capital = 0;
 
-                if ($remaining_money > 0 && $capital_pending > 0) {
-                    if ($remaining_money >= $capital_pending) {
+                if (round($remaining_money, 2) > 0 && $capital_pending > 0) {
+                    if (round($remaining_money, 2) >= $capital_pending) {
                         $pay_to_capital = $capital_pending;
-                        $remaining_money -= $capital_pending;
+                        $remaining_money = round($remaining_money - $capital_pending, 2);
                     } else {
-                        $pay_to_capital = $remaining_money;
+                        $pay_to_capital = round($remaining_money, 2);
                         $remaining_money = 0;
                     }
                 }
 
                 // C. Actualizar registro y guardar detalles de transacción
                 if ($pay_to_mora > 0 || $pay_to_capital > 0) {
-                    $new_paid_late_fee = $p_paid_late_fee + $pay_to_mora;
-                    $new_paid_amount = $p_paid_amount + $pay_to_capital;
+                    $new_paid_late_fee = round($p_paid_late_fee + $pay_to_mora, 2);
+                    $new_paid_amount = round($p_paid_amount + $pay_to_capital, 2);
 
                     // Verificar si quedó totalmente pagado
-                    $is_fully_paid = ($new_paid_amount >= $p_amount_due) && ($new_paid_late_fee >= $p_late_fee);
+                    $is_fully_paid = ($new_paid_amount >= round($p_amount_due, 2)) && ($new_paid_late_fee >= round($p_late_fee, 2));
 
                     $new_status = $is_fully_paid ? 'paid' : 'pending';
 
@@ -164,6 +165,8 @@ if (!$payment) {
 
 // Calculate remaining balance
 $remaining_balance = $payment['amount_due'] - $payment['paid_amount'];
+$pending_late_fee = $payment['late_fee'] - $payment['paid_late_fee'];
+$total_due_now = $remaining_balance + $pending_late_fee;
 
 // Check if payment is late
 $is_late = false;
@@ -245,10 +248,10 @@ require 'components/enhanced_header.php';
             <p style="margin: 0.25rem 0;"><strong>Fecha de Vencimiento:</strong> <?= $payment['due_date'] ?></p>
             <p style="margin: 0.25rem 0;"><strong>Monto de la Cuota:</strong>
                 $<?= number_format($payment['amount_due'], 2) ?></p>
-            <?php if ($payment['paid_amount'] > 0): ?>
+            <?php if ($payment['paid_amount'] > 0 || $payment['paid_late_fee'] > 0): ?>
                 <p style="margin: 0.25rem 0;"><strong>Abonado Anteriormente:</strong> <span
-                        style="color: #10b981;">$<?= number_format($payment['paid_amount'], 2) ?></span></p>
-                <p style="margin: 0.25rem 0;"><strong>Falta por Pagar:</strong> <span
+                        style="color: #10b981;">$<?= number_format($payment['paid_amount'] + $payment['paid_late_fee'], 2) ?></span></p>
+                <p style="margin: 0.25rem 0;"><strong>Capital Pendiente:</strong> <span
                         style="color: #dc2626; font-weight: bold;">$<?= number_format($remaining_balance, 2) ?></span>
                 </p>
             <?php endif; ?>
@@ -346,7 +349,7 @@ require 'components/enhanced_header.php';
         const total = amount + lateFee;
         totalSpan.textContent = '$' + total.toFixed(2);
 
-        // Calculate what will remain
+        // Calculate what will remain of capital
         const newPaid = alreadyPaid + amount;
         const willRemain = Math.max(0, amountDue - newPaid);
 
