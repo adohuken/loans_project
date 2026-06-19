@@ -51,12 +51,51 @@ foreach ($payments as $p) {
     }
 }
 
-// Calculate Progress
+// Calculate Progress & Detailed Metrics
 $total_paid = 0;
-foreach ($payments as $p) {
+$total_installments = count($payments);
+$paid_installments = 0;
+$pending_installments = 0;
+$late_installments = 0;
+$total_late_fees_loan = 0;
+$total_paid_late_fees_loan = 0;
+
+$next_payment = null;
+$today_str = date('Y-m-d');
+
+foreach ($payments as $index => $p) {
     $total_paid += $p['paid_amount'];
+    
+    // Late fees accumulated
+    $total_late_fees_loan += $p['late_fee'];
+    $total_paid_late_fees_loan += $p['paid_late_fee'];
+
+    // Installment count states
+    if ($p['status'] == 'paid') {
+        $paid_installments++;
+    } else {
+        $pending_installments++;
+        
+        // Overdue status check
+        if (strtotime($p['due_date']) < strtotime($today_str)) {
+            $late_installments++;
+        }
+        
+        // Find next payment (first unpaid or partially paid)
+        if ($next_payment === null) {
+            $next_payment = [
+                'num' => $index + 1,
+                'due_date' => $p['due_date'],
+                'amount_due' => $p['amount_due'],
+                'paid_amount' => $p['paid_amount'],
+                'remaining' => max(0, $p['amount_due'] - $p['paid_amount'] + ($p['late_fee'] - $p['paid_late_fee'])),
+                'is_late' => (strtotime($p['due_date']) < strtotime($today_str))
+            ];
+        }
+    }
 }
 $progress = ($loan['total_amount'] > 0) ? ($total_paid / $loan['total_amount']) * 100 : 0;
+$interest_total = max(0, $loan['total_amount'] - $loan['amount']);
 
 // Fetch Settings
 $stmt_settings = $pdo->query("SELECT * FROM settings WHERE id = 1");
@@ -290,6 +329,137 @@ require 'components/enhanced_header.php';
         background: #fee2e2;
         border-color: #fca5a5;
     }
+
+    /* Enriched Financial Summary Styles */
+    .financial-divider {
+        border: 0;
+        height: 1px;
+        background: var(--border-color);
+        margin: 2rem 0;
+    }
+
+    .financial-details-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-top: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+        .financial-details-grid {
+            grid-template-columns: 1.2fr 0.8fr;
+        }
+    }
+
+    .details-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+    }
+
+    .details-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 0.65rem;
+        border-bottom: 1px dashed var(--border-color);
+        font-size: 0.95rem;
+    }
+
+    .details-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .details-label {
+        color: var(--text-secondary);
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .details-value {
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .next-payment-card {
+        background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .next-payment-card.overdue {
+        background: linear-gradient(135deg, #fffbef 0%, #fef3c7 100%);
+        border-color: #f59e0b;
+        box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.1);
+    }
+
+    .next-payment-header {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+    }
+
+    .next-payment-card.overdue .next-payment-header {
+        color: #b45309;
+    }
+
+    .next-payment-amount {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1;
+        margin-bottom: 0.75rem;
+    }
+
+    .next-payment-card.overdue .next-payment-amount {
+        color: #b45309;
+    }
+
+    .next-payment-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        border-top: 1px solid var(--border-color);
+        padding-top: 0.75rem;
+    }
+
+    .next-payment-card.overdue .next-payment-meta {
+        border-top-color: #fde68a;
+        color: #78350f;
+    }
+
+    .badge-alert {
+        background: #fee2e2;
+        color: #ef4444;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        width: fit-content;
+        margin-top: 0.5rem;
+    }
 </style>
 
 <?php
@@ -418,6 +588,88 @@ $has_mismatch = abs($loan['total_amount'] - $calculated_total_due) > 0.05;
                     </div>
                     <div class="progress-track">
                         <div class="progress-fill" style="width: <?= $progress ?>%;"></div>
+                    </div>
+                </div>
+
+                <hr class="financial-divider">
+
+                <div class="financial-details-grid">
+                    <!-- Column 1: Details List -->
+                    <div class="details-list">
+                        <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--text-primary);">Desglose del Crédito</h4>
+                        
+                        <div class="details-row">
+                            <span class="details-label"><i class="fas fa-percentage" style="color: #3b82f6; width: 16px;"></i> Tasa de Interés</span>
+                            <span class="details-value"><?= number_format($loan['interest_rate'], 2) ?>% Mensual</span>
+                        </div>
+                        <div class="details-row">
+                            <span class="details-label"><i class="fas fa-coins" style="color: #f59e0b; width: 16px;"></i> Intereses Generados</span>
+                            <span class="details-value"><?= $currency . number_format($interest_total, 2) ?></span>
+                        </div>
+                        <div class="details-row">
+                            <span class="details-label"><i class="fas fa-list-ol" style="color: #8b5cf6; width: 16px;"></i> Cuotas Totales</span>
+                            <span class="details-value"><?= $total_installments ?></span>
+                        </div>
+                        <div class="details-row">
+                            <span class="details-label"><i class="fas fa-check-double" style="color: #10b981; width: 16px;"></i> Cuotas Pagadas</span>
+                            <span class="details-value" style="color: #10b981;"><?= $paid_installments ?></span>
+                        </div>
+                        <div class="details-row">
+                            <span class="details-label"><i class="fas fa-clock" style="color: #64748b; width: 16px;"></i> Cuotas Pendientes</span>
+                            <span class="details-value"><?= $pending_installments ?></span>
+                        </div>
+                        <div class="details-row">
+                            <span class="details-label"><i class="fas fa-exclamation-triangle" style="color: #ef4444; width: 16px;"></i> Cuotas Vencidas (Mora)</span>
+                            <span class="details-value" style="<?= $late_installments > 0 ? 'color: #ef4444;' : '' ?>"><?= $late_installments ?></span>
+                        </div>
+                        <?php if ($total_late_fees_loan > 0): ?>
+                            <div class="details-row">
+                                <span class="details-label"><i class="fas fa-receipt" style="color: #dc2626; width: 16px;"></i> Moras Acumuladas</span>
+                                <span class="details-value" style="color: #dc2626;"><?= $currency . number_format($total_late_fees_loan, 2) ?></span>
+                            </div>
+                            <div class="details-row">
+                                <span class="details-label"><i class="fas fa-file-invoice-dollar" style="color: #166534; width: 16px;"></i> Moras Pagadas</span>
+                                <span class="details-value" style="color: #10b981;"><?= $currency . number_format($total_paid_late_fees_loan, 2) ?></span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Column 2: Next Payment Info Card -->
+                    <div>
+                        <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--text-primary);">Próximo Vencimiento</h4>
+                        <?php if ($next_payment): ?>
+                            <div class="next-payment-card <?= $next_payment['is_late'] ? 'overdue' : '' ?>">
+                                <div>
+                                    <div class="next-payment-header">
+                                        <i class="fas <?= $next_payment['is_late'] ? 'fa-exclamation-triangle' : 'fa-calendar-alt' ?>"></i>
+                                        <?= $next_payment['is_late'] ? 'CUOTA VENCIDA' : 'PRÓXIMO PAGO' ?>
+                                    </div>
+                                    <div class="next-payment-amount">
+                                        <?= $currency . number_format($next_payment['remaining'], 2) ?>
+                                    </div>
+                                </div>
+                                <div class="next-payment-meta">
+                                    <div><strong>Cuota N°:</strong> <?= $next_payment['num'] ?> de <?= $total_installments ?></div>
+                                    <div><strong>Vence el:</strong> <?= date('d/m/Y', strtotime($next_payment['due_date'])) ?></div>
+                                    <?php if ($next_payment['paid_amount'] > 0): ?>
+                                        <div style="font-size: 0.8rem; opacity: 0.9;">
+                                            Abonado: <?= $currency . number_format($next_payment['paid_amount'], 2) ?> de <?= $currency . number_format($next_payment['amount_due'], 2) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if ($next_payment['is_late']): ?>
+                                        <span class="badge-alert">
+                                            <i class="fas fa-clock"></i> Pago atrasado
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; border-radius: 12px; padding: 2rem 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-check-circle" style="font-size: 2.5rem; color: #10b981;"></i>
+                                <strong style="font-size: 1rem;">Crédito Pagado</strong>
+                                <span style="font-size: 0.85rem; opacity: 0.8;">Este préstamo ha sido saldado en su totalidad.</span>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
