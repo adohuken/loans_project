@@ -24,7 +24,9 @@ if ($user_role === 'cobrador') {
         FROM loans l 
         JOIN clients c ON l.client_id = c.id 
         LEFT JOIN portfolios p ON c.portfolio_id = p.id
-        WHERE l.status = 'active' AND c.portfolio_id = ?
+        WHERE l.status = 'active' 
+          AND c.portfolio_id = ?
+          AND (l.total_amount - (SELECT COALESCE(SUM(paid_amount), 0) FROM payments WHERE loan_id = l.id)) > 0.05
         ORDER BY l.id DESC
     ");
     $stmt->execute([$user_portfolio_id]);
@@ -43,6 +45,7 @@ if ($user_role === 'cobrador') {
         JOIN clients c ON l.client_id = c.id 
         LEFT JOIN portfolios p ON c.portfolio_id = p.id
         WHERE l.status = 'active'
+          AND (l.total_amount - (SELECT COALESCE(SUM(paid_amount), 0) FROM payments WHERE loan_id = l.id)) > 0.05
         ORDER BY l.id DESC
     ");
     $loans = $stmt->fetchAll();

@@ -21,8 +21,19 @@ require 'components/enhanced_header.php';
 
 // Stats
 $total_clients = $pdo->query("SELECT COUNT(*) FROM clients")->fetchColumn();
-$active_loans = $pdo->query("SELECT COUNT(*) FROM loans WHERE status = 'active'")->fetchColumn();
-$paid_loans = $pdo->query("SELECT COUNT(*) FROM loans WHERE status = 'paid'")->fetchColumn();
+$active_loans = $pdo->query("
+    SELECT COUNT(*) 
+    FROM loans l 
+    WHERE l.status = 'active' 
+      AND (l.total_amount - (SELECT COALESCE(SUM(paid_amount), 0) FROM payments WHERE loan_id = l.id)) > 0.05
+")->fetchColumn();
+
+$paid_loans = $pdo->query("
+    SELECT COUNT(*) 
+    FROM loans l 
+    WHERE l.status = 'paid' 
+       OR (l.status = 'active' AND (l.total_amount - (SELECT COALESCE(SUM(paid_amount), 0) FROM payments WHERE loan_id = l.id)) <= 0.05)
+")->fetchColumn();
 
 // Financial Stats
 $total_invested = $pdo->query("SELECT SUM(amount) FROM loans")->fetchColumn() ?: 0;
