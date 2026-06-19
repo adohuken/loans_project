@@ -35,6 +35,13 @@ if (!$loan) {
 $stmt_payments = $pdo->prepare("SELECT * FROM payments WHERE loan_id = ? ORDER BY due_date ASC");
 $stmt_payments->execute([$loan_id]);
 $payments = $stmt_payments->fetchAll();
+
+// Calculate total paid and pending balance
+$total_paid = 0;
+foreach ($payments as $payment) {
+    $total_paid += $payment['paid_amount'];
+}
+$saldo_pendiente = max(0, $loan['total_amount'] - $total_paid);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -317,6 +324,10 @@ $payments = $stmt_payments->fetchAll();
                     class="info-value"><?= $loan['id'] ?></span></div>
             <div class="info-row"><span class="info-label">Total a Pagar:</span> <span class="info-value"
                     style="color: #3b82f6;"><?= $currency . number_format($loan['total_amount'], 2) ?></span></div>
+            <div class="info-row"><span class="info-label">Total Pagado:</span> <span class="info-value"
+                    style="color: #10b981;"><?= $currency . number_format($total_paid, 2) ?></span></div>
+            <div class="info-row"><span class="info-label">Saldo Pendiente:</span> <span class="info-value"
+                    style="color: #ef4444;"><?= $currency . number_format($saldo_pendiente, 2) ?></span></div>
             <div class="info-row"><span class="info-label">Frecuencia:</span> <span class="info-value">
                     <?php
                     $freq_map = [
@@ -343,8 +354,10 @@ $payments = $stmt_payments->fetchAll();
         <tbody>
             <?php
             $count = 1;
+            $running_balance = $loan['total_amount'];
             foreach ($payments as $payment):
                 $balance_due = $payment['amount_due'] - $payment['paid_amount'];
+                $running_balance = max(0, $running_balance - $payment['paid_amount']);
                 $status_class = 'badge-pending';
                 $status_text = 'PENDIENTE';
 
@@ -366,7 +379,7 @@ $payments = $stmt_payments->fetchAll();
                         <?= $currency . number_format($payment['paid_amount'], 2) ?>
                     </td>
                     <td class="text-center" style="color: #ef4444; font-weight: 700;">
-                        <?= $currency . number_format($balance_due, 2) ?>
+                        <?= $currency . number_format($running_balance, 2) ?>
                     </td>
                 </tr>
             <?php endforeach; ?>

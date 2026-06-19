@@ -96,24 +96,31 @@ if (!$data) {
 }
 
 // Calculate Saldo Restante (Global Loan Balance)
-// We need to sum all payments made UP TO this transaction/payment date.
-// Or just sum all payments period.
-// For accuracy on the receipt, usually it shows the balance AFTER this payment.
 if ($mode == 'transaction') {
-    // Sum of all payments (paid_amount) in `payments` table for this loan
-    $stmt_bal = $pdo->prepare("SELECT SUM(paid_amount) FROM payments WHERE loan_id = ?");
-    $stmt_bal->execute([$data['loan_id']]);
-    $total_paid_loan = $stmt_bal->fetchColumn() ?: 0;
-
     // Get Loan Total
     $stmt_loan = $pdo->prepare("SELECT total_amount FROM loans WHERE id = ?");
     $stmt_loan->execute([$data['loan_id']]);
-    $loan_total = $stmt_loan->fetchColumn();
+    $loan_total = $stmt_loan->fetchColumn() ?: 0;
 
-    $saldo_restante = max(0, $loan_total - $total_paid_loan);
-    $saldo_inicial = $saldo_restante + $data['total_amount']; // Approx
+    // Sum of all capital payments made UP TO this transaction ID
+    $stmt_bal = $pdo->prepare("
+        SELECT SUM(td.amount_applied) 
+        FROM transaction_details td
+        JOIN transactions t ON td.transaction_id = t.id
+        WHERE t.loan_id = ? AND t.id <= ? AND td.type = 'capital'
+    ");
+    $stmt_bal->execute([$data['loan_id'], $transaction_id]);
+    $total_paid_up_to_now = $stmt_bal->fetchColumn() ?: 0;
+
+    // Capital applied in THIS transaction
+    $stmt_cap = $pdo->prepare("SELECT SUM(amount_applied) FROM transaction_details WHERE transaction_id = ? AND type = 'capital'");
+    $stmt_cap->execute([$transaction_id]);
+    $capital_applied = $stmt_cap->fetchColumn() ?: 0;
+
+    $saldo_restante = max(0, $loan_total - $total_paid_up_to_now);
+    $saldo_inicial = $saldo_restante + $capital_applied;
 } else {
-    // Logic from old file
+    // Logic for legacy single payment mode
     $stmt_history = $pdo->prepare("SELECT SUM(paid_amount) as total_paid_so_far FROM payments WHERE loan_id = ? AND id <= ?");
     $stmt_history->execute([$data['loan_id'], $payment_id]);
     $history = $stmt_history->fetch();
