@@ -622,11 +622,16 @@ $has_mismatch = abs($loan['total_amount'] - $calculated_total_due) > 0.05;
                             <span class="details-label"><i class="fas fa-exclamation-triangle" style="color: #ef4444; width: 16px;"></i> Cuotas Vencidas (Mora)</span>
                             <span class="details-value" style="<?= $late_installments > 0 ? 'color: #ef4444;' : '' ?>"><?= $late_installments ?></span>
                         </div>
-                        <?php if ($total_late_fees_loan > 0): ?>
+                        <?php 
+                        $pending_late_fee = max(0, $total_late_fees_loan - $total_paid_late_fees_loan);
+                        if ($pending_late_fee > 0.05): 
+                        ?>
                             <div class="details-row">
-                                <span class="details-label"><i class="fas fa-receipt" style="color: #dc2626; width: 16px;"></i> Moras Acumuladas</span>
-                                <span class="details-value" style="color: #dc2626;"><?= $currency . number_format($total_late_fees_loan, 2) ?></span>
+                                <span class="details-label"><i class="fas fa-receipt" style="color: #dc2626; width: 16px;"></i> Mora Pendiente</span>
+                                <span class="details-value" style="color: #dc2626;"><?= $currency . number_format($pending_late_fee, 2) ?></span>
                             </div>
+                        <?php endif; ?>
+                        <?php if ($total_paid_late_fees_loan > 0.05): ?>
                             <div class="details-row">
                                 <span class="details-label"><i class="fas fa-file-invoice-dollar" style="color: #166534; width: 16px;"></i> Moras Pagadas</span>
                                 <span class="details-value" style="color: #10b981;"><?= $currency . number_format($total_paid_late_fees_loan, 2) ?></span>
